@@ -5,7 +5,7 @@ import Container from "@/components/ui/Container";
 const navLinks = [
   { label: "Home", href: "/" },
   { label: "Vehicles", href: "/#vehicles" },
-  { label: "Contact", href: "/#contact" }
+  { label: "Contact", href: "/contact" }
 ];
 
 export default function Navbar() {

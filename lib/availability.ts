@@ -1,7 +1,13 @@
 import { TimeSlot } from "@/types";
 import { query } from "@/lib/db";
+import { vehicles } from "@/data/vehicles";
 
 type BookingTimeRow = {
+  start_time: string;
+  end_time: string;
+};
+
+type BookingRow = {
   start_time: string;
   end_time: string;
 };
@@ -38,6 +44,20 @@ function generateSlots(): TimeSlot[] {
 }
 
 export async function getAvailability(vehicleId: string, date: string): Promise<AvailabilityResult> {
+  const matchedVehicle = vehicles.find((v) => v.id === vehicleId);
+  if (!matchedVehicle) {
+    return { vehicleId, date, isBlocked: false, slots: generateSlots().map((s) => ({ ...s, date })) };
+  }
+
+  const vehicleResult = await query<{ id: string }>(
+    "SELECT id FROM vehicles WHERE slug = $1 LIMIT 1",
+    [matchedVehicle.slug]
+  );
+  const dbVehicleId = vehicleResult.rows[0]?.id;
+  if (!dbVehicleId) {
+    return { vehicleId, date, isBlocked: false, slots: generateSlots().map((s) => ({ ...s, date })) };
+  }
+
   const blockedResult = await query<{ exists: boolean }>(
     `
       SELECT EXISTS(
@@ -46,7 +66,7 @@ export async function getAvailability(vehicleId: string, date: string): Promise<
         WHERE vehicle_id = $1 AND date = $2::date
       ) AS exists
     `,
-    [vehicleId, date]
+    [dbVehicleId, date]
   );
 
   const isBlocked = blockedResult.rows[0]?.exists ?? false;
@@ -73,10 +93,10 @@ export async function getAvailability(vehicleId: string, date: string): Promise<
         AND date = $2::date
         AND status IN ('pending', 'confirmed')
     `,
-    [vehicleId, date]
+    [dbVehicleId, date]
   );
 
-  const bookings = bookingsResult.rows.map((row) => ({
+  const bookings = bookingsResult.rows.map((row: BookingRow) => ({
     start: toMinutes(row.start_time),
     end: toMinutes(row.end_time)
   }));
@@ -85,7 +105,7 @@ export async function getAvailability(vehicleId: string, date: string): Promise<
     const slotStart = toMinutes(slot.startTime);
     const slotEnd = toMinutes(slot.endTime);
 
-    const overlaps = bookings.some((booking) => slotStart < booking.end && slotEnd > booking.start);
+    const overlaps = bookings.some((booking: { start: number; end: number }) => slotStart < booking.end && slotEnd > booking.start);
 
     return {
       ...slot,

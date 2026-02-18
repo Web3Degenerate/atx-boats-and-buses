@@ -1,20 +1,58 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { notFound } from "next/navigation";
-import BookingForm from "@/components/booking/BookingForm";
+import { useParams } from "next/navigation";
+import UnifiedBookingForm from "@/components/booking/UnifiedBookingForm";
 import Container from "@/components/ui/Container";
-import { vehicles } from "@/data/vehicles";
+import { Vehicle } from "@/types";
 
-type VehicleDetailPageProps = {
-  params: {
-    slug: string;
-  };
-};
+export default function VehicleDetailPage() {
+  const params = useParams<{ slug: string }>();
+  const slug = params?.slug;
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [loading, setLoading] = useState(true);
 
-export default function VehicleDetailPage({ params }: VehicleDetailPageProps) {
-  const vehicle = vehicles.find((item) => item.slug === params.slug);
+  useEffect(() => {
+    async function fetchVehicles() {
+      try {
+        const response = await fetch("/api/vehicles");
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as Vehicle[];
+        setVehicles(data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchVehicles();
+  }, []);
+
+  const vehicle = useMemo(() => vehicles.find((item) => item.slug === slug), [vehicles, slug]);
+
+  if (loading) {
+    return (
+      <section className="py-12">
+        <Container>
+          <p className="text-sm text-slate-600">Loading...</p>
+        </Container>
+      </section>
+    );
+  }
 
   if (!vehicle) {
-    notFound();
+    return (
+      <section className="py-12">
+        <Container>
+          <p className="text-sm text-slate-700">Vehicle not found</p>
+        </Container>
+      </section>
+    );
   }
 
   return (
@@ -50,7 +88,7 @@ export default function VehicleDetailPage({ params }: VehicleDetailPageProps) {
             </ul>
           </div>
 
-          <BookingForm vehicle={vehicle} />
+          <UnifiedBookingForm vehicle={vehicle} />
         </div>
       </Container>
     </section>

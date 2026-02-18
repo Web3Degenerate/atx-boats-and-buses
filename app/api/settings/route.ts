@@ -22,7 +22,7 @@ export async function GET() {
   try {
     const result = await query<SettingRow>("SELECT key, value FROM site_settings");
 
-    const settings = result.rows.reduce<Record<string, string | boolean>>((acc, row) => {
+    const settings = result.rows.reduce<Record<string, string | boolean>>((acc: Record<string, string | boolean>, row: SettingRow) => {
       acc[row.key] = parseSettingValue(row.value);
       return acc;
     }, {});

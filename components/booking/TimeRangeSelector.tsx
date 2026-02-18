@@ -9,11 +9,20 @@ type TimeRangeSelectorProps = {
   onStartTimeChange: (value: string) => void;
   onEndTimeChange: (value: string) => void;
   minimumHours: number;
+  maximumHours: number;
+  vehicleType: string;
 };
 
 function toMinutes(time: string): number {
   const [hours, minutes] = time.split(":").map(Number);
   return hours * 60 + minutes;
+}
+
+function formatTime12h(time: string): string {
+  const [hours, minutes] = time.split(":").map(Number);
+  const period = hours >= 12 ? "PM" : "AM";
+  const displayHours = hours % 12 || 12;
+  return `${displayHours}:${minutes.toString().padStart(2, "0")} ${period}`;
 }
 
 function getDurationHours(startTime: string, endTime: string): number {
@@ -30,10 +39,23 @@ export default function TimeRangeSelector({
   endTime,
   onStartTimeChange,
   onEndTimeChange,
-  minimumHours
+  minimumHours,
+  maximumHours,
+  vehicleType
 }: TimeRangeSelectorProps) {
   const sortedSlots = [...availableSlots].sort((a, b) => toMinutes(a.startTime) - toMinutes(b.startTime));
-  const startOptions = sortedSlots.filter((slot) => slot.isAvailable);
+  const latestBoatStartMinutes = 20 * 60 - maximumHours * 60;
+  const startOptions = sortedSlots.filter((slot) => {
+    if (!slot.isAvailable) {
+      return false;
+    }
+
+    if (vehicleType === "party-boat" && toMinutes(slot.startTime) > latestBoatStartMinutes) {
+      return false;
+    }
+
+    return true;
+  });
 
   const selectedStartIndex = sortedSlots.findIndex((slot) => slot.startTime === startTime);
 
@@ -49,7 +71,7 @@ export default function TimeRangeSelector({
             }
 
             const duration = i - selectedStartIndex + 1;
-            if (duration >= minimumHours) {
+            if (duration >= minimumHours && duration <= maximumHours) {
               options.push(slot.endTime);
             }
           }
@@ -74,7 +96,7 @@ export default function TimeRangeSelector({
             <option value="">Select start time</option>
             {startOptions.map((slot) => (
               <option key={slot.startTime} value={slot.startTime}>
-                {slot.startTime}
+                {formatTime12h(slot.startTime)}
               </option>
             ))}
           </select>
@@ -91,14 +113,16 @@ export default function TimeRangeSelector({
             <option value="">Select end time</option>
             {endOptions.map((option) => (
               <option key={option} value={option}>
-                {option}
+                {formatTime12h(option)}
               </option>
             ))}
           </select>
         </label>
       </div>
 
-      <p className="text-sm text-slate-600">Minimum booking: {minimumHours} hours</p>
+      <p className="text-sm text-slate-600">
+        Minimum booking: {minimumHours} hours · Maximum: {maximumHours} hours
+      </p>
       <p className="text-sm font-medium text-slate-800">
         Selected duration: {durationHours > 0 ? `${durationHours} hour${durationHours > 1 ? "s" : ""}` : "Not selected"}
       </p>

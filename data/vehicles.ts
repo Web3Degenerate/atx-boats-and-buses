@@ -19,6 +19,7 @@ export const vehicles: Vehicle[] = [
       "Climate Controlled"
     ],
     minimumHours: 3,
+    maximumHours: 48,
     fuelChargePercent: 20
   },
   {
@@ -33,7 +34,8 @@ export const vehicles: Vehicle[] = [
     images: ["/images/bus-1.jpg", "/images/bus-2.jpg"],
     features: ["Private Bathroom", "25 Guest Capacity", "Comfortable Seating", "Climate Controlled"],
     minimumHours: 3,
-    fuelChargePercent: 0
+    maximumHours: 48,
+    fuelChargePercent: 20
   },
   {
     id: "v3",
@@ -47,6 +49,7 @@ export const vehicles: Vehicle[] = [
     images: ["/images/boat-1.jpg", "/images/boat-2.jpg"],
     features: ["20 Guest Capacity", "Full Sun Deck", "Premium Sound System", "Swim Platform"],
     minimumHours: 3,
+    maximumHours: 4,
     fuelChargePercent: 0
   },
   {
@@ -61,6 +64,7 @@ export const vehicles: Vehicle[] = [
     images: ["/images/boat-1.jpg", "/images/boat-2.jpg"],
     features: ["20 Guest Capacity", "Open Deck Layout", "Bluetooth Audio", "Swim Platform"],
     minimumHours: 3,
+    maximumHours: 4,
     fuelChargePercent: 0
   }
 ];

@@ -9,6 +9,7 @@ export interface Vehicle {
   images: string[];
   features: string[];
   minimumHours: number;
+  maximumHours: number;
   fuelChargePercent: number;
 }
 

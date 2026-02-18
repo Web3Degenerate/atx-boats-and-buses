@@ -4,37 +4,36 @@ import { useEffect, useState } from "react";
 import Button from "@/components/ui/Button";
 import Container from "@/components/ui/Container";
 import VehicleCard from "@/components/vehicles/VehicleCard";
-import { vehicles } from "@/data/vehicles";
 import Image from "next/image";
-
-type SettingsResponse = {
-  fuel_charge_enabled?: boolean;
-};
+import { Vehicle } from "@/types";
 
 export default function HomePage() {
-  const [fuelChargeEnabled, setFuelChargeEnabled] = useState(true);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchSettings() {
+    async function fetchVehicles() {
       try {
-        const response = await fetch("/api/settings");
+        const response = await fetch("/api/vehicles");
         if (!response.ok) {
           return;
         }
 
-        const data: SettingsResponse = await response.json();
-        setFuelChargeEnabled(data.fuel_charge_enabled !== false);
+        const data = (await response.json()) as Vehicle[];
+        setVehicles(data);
       } catch (error) {
         console.error(error);
+      } finally {
+        setLoading(false);
       }
     }
 
-    fetchSettings();
+    fetchVehicles();
   }, []);
 
   const orderedVehicles = [
     ...vehicles.filter((vehicle) => vehicle.type === "party-bus"),
-    ...vehicles.filter((vehicle) => vehicle.type === "party-boat")
+    ...vehicles.filter((vehicle) => vehicle.type !== "party-bus")
   ];
 
   return (
@@ -68,21 +67,25 @@ export default function HomePage() {
             <h2 className="text-3xl font-bold text-primary">Featured Vehicles</h2>
             <p className="text-sm text-slate-600">Simple placeholders for now</p>
           </div>
-          <div className="grid grid-cols-2 gap-6">
-            {orderedVehicles.map((vehicle) => (
-              <div key={vehicle.id} className="space-y-2">
-                <VehicleCard vehicle={vehicle} />
-                <div className="px-1 text-sm text-slate-700">
-                  <span>{vehicle.minimumHours} hour minimum</span>
-                  {fuelChargeEnabled && vehicle.fuelChargePercent > 0 && (
-                    <span className="ml-3 font-medium text-secondary">
-                      + {vehicle.fuelChargePercent}% fuel charge
-                    </span>
-                  )}
+          {loading ? (
+            <p className="text-sm text-slate-600">Loading...</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-6">
+              {orderedVehicles.map((vehicle) => (
+                <div key={vehicle.id} className="space-y-2">
+                  <VehicleCard vehicle={vehicle} />
+                  <div className="px-1 text-sm text-slate-700">
+                    <span>{vehicle.minimumHours} hour minimum</span>
+                    {vehicle.fuelChargePercent > 0 && (
+                      <span className="ml-3 font-medium text-secondary">
+                        + {vehicle.fuelChargePercent}% fuel charge
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </Container>
       </section>
     </>

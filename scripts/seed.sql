@@ -3,7 +3,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'booking_status') THEN
-    CREATE TYPE booking_status AS ENUM ('pending', 'confirmed', 'cancelled');
+    CREATE TYPE booking_status AS ENUM ('pending', 'pending_approval', 'confirmed', 'cancelled');
   END IF;
 END
 $$;
@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS vehicles (
   capacity INTEGER NOT NULL,
   price_per_hour INTEGER NOT NULL,
   minimum_hours INTEGER NOT NULL,
+  maximum_hours INTEGER NOT NULL DEFAULT 48,
   fuel_charge_percent INTEGER NOT NULL DEFAULT 0,
   features JSON NOT NULL,
   images JSON NOT NULL,
@@ -36,7 +37,8 @@ CREATE TABLE IF NOT EXISTS bookings (
   notes TEXT,
   total_price INTEGER NOT NULL,
   status booking_status NOT NULL DEFAULT 'pending',
-  stripe_session_id TEXT,
+  stripe_session_id TEXT UNIQUE,
+  stripe_payment_intent_id TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -64,6 +66,7 @@ INSERT INTO vehicles (
   capacity,
   price_per_hour,
   minimum_hours,
+  maximum_hours,
   fuel_charge_percent,
   features,
   images
@@ -77,6 +80,7 @@ VALUES
     23,
     40000,
     3,
+    48,
     20,
     '["Private Bathroom", "23 Guest Capacity", "Premium Sound System", "LED Party Lighting", "Climate Controlled"]'::json,
     '["/images/bus-1.jpg", "/images/bus-2.jpg"]'::json
@@ -89,7 +93,8 @@ VALUES
     25,
     25000,
     3,
-    0,
+    48,
+    20,
     '["Private Bathroom", "25 Guest Capacity", "Comfortable Seating", "Climate Controlled"]'::json,
     '["/images/bus-3.jpg", "/images/bus-4.jpg"]'::json
   ),
@@ -101,6 +106,7 @@ VALUES
     20,
     70000,
     3,
+    4,
     0,
     '["20 Guest Capacity", "Full Sun Deck", "Premium Sound System", "Swim Platform"]'::json,
     '["/images/boat-1.jpg", "/images/boat-2.jpg"]'::json
@@ -113,6 +119,7 @@ VALUES
     20,
     35000,
     3,
+    4,
     0,
     '["20 Guest Capacity", "Open Deck Layout", "Bluetooth Audio", "Swim Platform"]'::json,
     '["/images/boat-3.jpg", "/images/boat-4.jpg"]'::json

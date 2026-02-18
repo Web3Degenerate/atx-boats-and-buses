@@ -37,8 +37,8 @@ export default function DatePicker({ selectedDate, onDateSelect, disabledDates }
           day_disabled: "text-slate-300 line-through",
           day_today: "font-semibold text-primary"
         }}
-        styles={{
-          day_selected: {
+        modifiersStyles={{
+          selected: {
             backgroundColor: "#F5A623",
             color: "#1E3A5F"
           }
