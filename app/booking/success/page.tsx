@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Booking Request Received",
+  description: "Your booking request has been received. We will confirm your reservation shortly."
+};
 
 export default function BookingSuccessPage() {
   return (

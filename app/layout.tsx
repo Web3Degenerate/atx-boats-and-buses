@@ -4,8 +4,27 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 
 export const metadata: Metadata = {
-  title: "ATX Boats & Buses",
-  description: "Austin party boat and party bus rentals",
+  title: {
+    default: "ATX Boats & Buses | Austin Rentals",
+    template: "%s | ATX Boats & Buses"
+  },
+  description:
+    "Premium party boat and party bus rentals in Austin, TX. Perfect for birthdays, bachelorette parties, corporate events, and more. Book online today.",
+  keywords: [
+    "party bus Austin",
+    "boat rental Austin",
+    "ATX party bus",
+    "Austin yacht rental",
+    "bachelorette party Austin"
+  ],
+  openGraph: {
+    title: "ATX Boats & Buses | Austin Rentals",
+    description: "Premium party boat and party bus rentals in Austin, TX. Book online today.",
+    url: "https://atxboatsandbuses.com",
+    siteName: "ATX Boats & Buses",
+    locale: "en_US",
+    type: "website"
+  },
   icons: {
     icon: "/images/favicon.svg"
   }
@@ -20,7 +39,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="min-h-screen bg-slate-50 text-slate-900">
         <Navbar />
-        <main>{children}</main>
+        {children}
         <Footer />
       </body>
     </html>

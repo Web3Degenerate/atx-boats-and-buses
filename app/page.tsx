@@ -10,12 +10,14 @@ import { Vehicle } from "@/types";
 export default function HomePage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     async function fetchVehicles() {
       try {
         const response = await fetch("/api/vehicles");
         if (!response.ok) {
+          setError("Unable to load vehicles. Please refresh the page.");
           return;
         }
 
@@ -23,6 +25,7 @@ export default function HomePage() {
         setVehicles(data);
       } catch (error) {
         console.error(error);
+        setError("Unable to load vehicles. Please refresh the page.");
       } finally {
         setLoading(false);
       }
@@ -65,26 +68,32 @@ export default function HomePage() {
         <Container>
           <div className="mb-8 flex items-end justify-between gap-3">
             <h2 className="text-3xl font-bold text-primary">Featured Vehicles</h2>
-            <p className="text-sm text-slate-600">Simple placeholders for now</p>
           </div>
           {loading ? (
-            <p className="text-sm text-slate-600">Loading...</p>
-          ) : (
-            <div className="grid grid-cols-2 gap-6">
-              {orderedVehicles.map((vehicle) => (
-                <div key={vehicle.id} className="space-y-2">
-                  <VehicleCard vehicle={vehicle} />
-                  <div className="px-1 text-sm text-slate-700">
-                    <span>{vehicle.minimumHours} hour minimum</span>
-                    {vehicle.fuelChargePercent > 0 && (
-                      <span className="ml-3 font-medium text-secondary">
-                        + {vehicle.fuelChargePercent}% fuel charge
-                      </span>
-                    )}
-                  </div>
-                </div>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-64 animate-pulse rounded-xl bg-slate-200" />
               ))}
             </div>
+          ) : (
+            <>
+              {error && <p className="text-sm text-red-600">{error}</p>}
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                {orderedVehicles.map((vehicle) => (
+                  <div key={vehicle.id} className="space-y-2">
+                    <VehicleCard vehicle={vehicle} />
+                    <div className="px-1 text-sm text-slate-700">
+                      <span>{vehicle.minimumHours} hour minimum</span>
+                      {vehicle.fuelChargePercent > 0 && (
+                        <span className="ml-3 font-medium text-secondary">
+                          + {vehicle.fuelChargePercent}% fuel charge
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </Container>
       </section>

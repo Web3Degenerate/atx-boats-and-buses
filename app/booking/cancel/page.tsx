@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Booking Cancelled",
+  description: "Your booking was not completed."
+};
 
 export default function BookingCancelPage() {
   return (
