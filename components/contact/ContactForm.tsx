@@ -55,63 +55,63 @@ export default function ContactForm() {
   return (
     <section className="py-12">
       <div className="mx-auto w-full max-w-3xl px-4">
-        <h1 className="text-3xl font-bold text-primary">Contact Us</h1>
-        <p className="mt-2 text-slate-700">Have questions about booking? Give us a call or send us a message.</p>
+        <h1 className="text-3xl font-bold text-white">Contact Us</h1>
+        <p className="mt-2 text-neutral-300">Have questions about booking? Give us a call or send us a message.</p>
 
-        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5">
-          <h2 className="text-lg font-semibold text-primary">Call Us</h2>
-          <p className="mt-1 text-sm text-slate-600">Speak with our team directly for fast booking help.</p>
+        <div className="mt-6 rounded-xl border border-white/10 bg-neutral-900 p-5">
+          <h2 className="text-lg font-semibold text-white">Call Us</h2>
+          <p className="mt-1 text-sm text-neutral-400">Speak with our team directly for fast booking help.</p>
           {/* TODO: Replace with real business phone number */}
           <a
             href="tel:+15125550199"
-            className="mt-4 inline-flex w-full items-center justify-center rounded-md bg-secondary px-5 py-4 text-lg font-semibold text-primary transition hover:bg-amber-400"
+            className="mt-4 inline-flex w-full items-center justify-center rounded-md bg-white px-5 py-4 text-lg font-semibold text-black transition hover:bg-neutral-200"
           >
             (512) 555-0199
           </a>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-5">
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4 rounded-xl border border-white/10 bg-neutral-900 p-5">
           <label className="block space-y-1">
-            <span className="text-sm font-medium text-slate-700">Name</span>
+            <span className="text-sm font-medium text-neutral-300">Name</span>
             <input
               type="text"
               required
               value={name}
               onChange={(event) => setName(event.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-white/10 bg-neutral-950 px-3 py-2 text-sm text-white"
             />
           </label>
 
           <label className="block space-y-1">
-            <span className="text-sm font-medium text-slate-700">Email</span>
+            <span className="text-sm font-medium text-neutral-300">Email</span>
             <input
               type="email"
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-white/10 bg-neutral-950 px-3 py-2 text-sm text-white"
             />
           </label>
 
           <label className="block space-y-1">
-            <span className="text-sm font-medium text-slate-700">Phone</span>
+            <span className="text-sm font-medium text-neutral-300">Phone</span>
             <input
               type="tel"
               required
               value={phone}
               onChange={(event) => setPhone(event.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-white/10 bg-neutral-950 px-3 py-2 text-sm text-white"
             />
           </label>
 
           <label className="block space-y-1">
-            <span className="text-sm font-medium text-slate-700">Message</span>
+            <span className="text-sm font-medium text-neutral-300">Message</span>
             <textarea
               required
               rows={5}
               value={message}
               onChange={(event) => setMessage(event.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-white/10 bg-neutral-950 px-3 py-2 text-sm text-white"
             />
           </label>
 
@@ -121,7 +121,7 @@ export default function ContactForm() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-md bg-primary px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+            className="w-full rounded-md bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {submitting ? "Sending..." : "Send Message"}
           </button>

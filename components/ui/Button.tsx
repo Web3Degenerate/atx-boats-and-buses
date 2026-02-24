@@ -8,7 +8,7 @@ type ButtonProps = {
 };
 
 const baseStyles =
-  "inline-flex items-center justify-center rounded-md bg-secondary px-5 py-3 text-sm font-semibold text-primary transition hover:bg-amber-400";
+  "inline-flex items-center justify-center gap-2 bg-white text-black px-8 py-4 rounded-full font-semibold hover:bg-neutral-200 transition-colors";
 
 export default function Button({ children, href, className = "" }: ButtonProps) {
   if (href) {

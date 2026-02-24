@@ -1,101 +1,146 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Button from "@/components/ui/Button";
-import Container from "@/components/ui/Container";
-import VehicleCard from "@/components/vehicles/VehicleCard";
 import Image from "next/image";
-import { Vehicle } from "@/types";
+import Link from "next/link";
+import { ArrowRight, Anchor, Bus } from "lucide-react";
+import * as motion from "motion/react-client";
 
 export default function HomePage() {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    async function fetchVehicles() {
-      try {
-        const response = await fetch("/api/vehicles");
-        if (!response.ok) {
-          setError("Unable to load vehicles. Please refresh the page.");
-          return;
-        }
-
-        const data = (await response.json()) as Vehicle[];
-        setVehicles(data);
-      } catch (error) {
-        console.error(error);
-        setError("Unable to load vehicles. Please refresh the page.");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchVehicles();
-  }, []);
-
-  const orderedVehicles = [
-    ...vehicles.filter((vehicle) => vehicle.type === "party-bus"),
-    ...vehicles.filter((vehicle) => vehicle.type !== "party-bus")
-  ];
-
   return (
     <>
-      <section className="bg-primary py-20 text-white">
-        <Container className="flex flex-col items-center gap-6 md:flex-row md:items-center md:justify-between">
-          <div className="flex-shrink-0">
-            <Image
-              src="/images/logo-white.png"
-              alt="ATX Boats & Buses"
-              width={300}
-              height={300}
-              className="h-auto w-[300px] rounded-full"
-              priority
-            />
-          </div>
-          <div className="space-y-6 text-center md:max-w-2xl md:text-left">
-            <p className="text-sm font-semibold uppercase tracking-wide text-secondary">Austin Rentals</p>
-            <h1 className="max-w-3xl text-4xl font-bold leading-tight md:text-5xl">ATX Boats & Buses</h1>
-            <p className="max-w-2xl text-base text-slate-200 md:text-lg">
-              Premium boat and party bus rentals for birthdays, corporate outings, and unforgettable weekends across Austin.
+      <section className="relative flex min-h-[60vh] items-center justify-center overflow-hidden">
+        <div className="absolute inset-0 bg-neutral-900">
+          <div className="absolute inset-0 z-10 bg-gradient-to-b from-neutral-950 via-transparent to-neutral-950" />
+          <Image
+            src="/images/boat-slider-image-default.webp"
+            alt="Hero Background"
+            fill
+            className="object-cover opacity-30"
+            priority
+          />
+        </div>
+        <div className="relative z-20 mx-auto max-w-4xl px-6 text-center">
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.8 }}
+          >
+            <h1 className="mb-6 text-5xl font-bold tracking-tighter md:text-7xl lg:text-8xl">Explore Austin in Style</h1>
+          </motion.div>
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.8 }}
+          >
+            <p className="mx-auto mb-10 max-w-2xl text-lg text-neutral-400 md:text-xl">
+              Premium boat and bus rentals for unforgettable experiences on the water and the road.
             </p>
-            <Button href="#vehicles">Browse Vehicles</Button>
-          </div>
-        </Container>
+          </motion.div>
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.4, duration: 0.8 }}
+            className="flex flex-col justify-center gap-4 sm:flex-row"
+          >
+            <Link
+              href="/buses"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 font-semibold text-black transition-colors hover:bg-neutral-200"
+            >
+              <Bus className="h-5 w-5" />
+              Rent a Bus
+            </Link>
+            <Link
+              href="/boats"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/30 bg-transparent px-8 py-4 font-semibold text-white transition-colors hover:bg-white/10"
+            >
+              <Anchor className="h-5 w-5" />
+              Rent a Boat
+            </Link>
+          </motion.div>
+        </div>
       </section>
 
-      <section id="vehicles" className="py-16">
-        <Container>
-          <div className="mb-8 flex items-end justify-between gap-3">
-            <h2 className="text-3xl font-bold text-primary">Featured Vehicles</h2>
-          </div>
-          {loading ? (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-64 animate-pulse rounded-xl bg-slate-200" />
-              ))}
-            </div>
-          ) : (
-            <>
-              {error && <p className="text-sm text-red-600">{error}</p>}
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                {orderedVehicles.map((vehicle) => (
-                  <div key={vehicle.id} className="space-y-2">
-                    <VehicleCard vehicle={vehicle} />
-                    <div className="px-1 text-sm text-slate-700">
-                      <span>{vehicle.minimumHours} hour minimum</span>
-                      {vehicle.fuelChargePercent > 0 && (
-                        <span className="ml-3 font-medium text-secondary">
-                          + {vehicle.fuelChargePercent}% fuel charge
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+      <section id="about" className="mx-auto w-full max-w-7xl px-6 py-24 lg:px-12">
+        <div className="grid gap-8 md:grid-cols-2 lg:gap-12">
+          <motion.div
+            initial={{ y: 40, opacity: 0 }}
+            whileInView={{ y: 0, opacity: 1 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8 }}
+          >
+            <Link
+              id="bus"
+              href="/buses"
+              className="group relative flex aspect-[4/5] cursor-pointer flex-col justify-end overflow-hidden rounded-3xl p-8 lg:aspect-square lg:p-12"
+            >
+              <div className="absolute inset-0 bg-neutral-900">
+                <Image
+                  src="/images/bus-slider-image-default.webp"
+                  alt="Luxury Bus Rental"
+                  fill
+                  className="object-cover opacity-60 transition-all duration-700 ease-in-out group-hover:scale-105 group-hover:opacity-50"
+                />
               </div>
-            </>
-          )}
-        </Container>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+
+              <div className="relative z-10">
+                <div className="mb-4 flex items-center gap-4">
+                  <div className="h-[1px] w-8 bg-white" />
+                  <span className="text-xs font-medium uppercase tracking-[0.2em]">Premium Fleet</span>
+                </div>
+                <h2 className="mb-4 text-4xl font-bold tracking-tighter lg:text-5xl">Rent a Bus</h2>
+                <p className="mb-8 max-w-sm text-neutral-300">
+                  Experience luxury group travel with our premium party buses and coaches. Perfect for corporate events,
+                  weddings, and city tours.
+                </p>
+                <span className="inline-flex w-fit items-center gap-3 rounded-full bg-white px-6 py-3 font-semibold text-black transition-colors hover:bg-neutral-200">
+                  <Bus className="h-4 w-4" />
+                  Explore Buses
+                  <ArrowRight className="h-4 w-4" />
+                </span>
+              </div>
+            </Link>
+          </motion.div>
+
+          <motion.div
+            initial={{ y: 40, opacity: 0 }}
+            whileInView={{ y: 0, opacity: 1 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+          >
+            <Link
+              id="boat"
+              href="/boats"
+              className="group relative flex aspect-[4/5] cursor-pointer flex-col justify-end overflow-hidden rounded-3xl p-8 lg:aspect-square lg:p-12"
+            >
+              <div className="absolute inset-0 bg-neutral-900">
+                <Image
+                  src="/images/boat-slider-image-default.webp"
+                  alt="Luxury Boat Rental"
+                  fill
+                  className="object-cover opacity-60 transition-all duration-700 ease-in-out group-hover:scale-105 group-hover:opacity-50"
+                />
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+
+              <div className="relative z-10">
+                <div className="mb-4 flex items-center gap-4">
+                  <div className="h-[1px] w-8 bg-white" />
+                  <span className="text-xs font-medium uppercase tracking-[0.2em]">Lake Austin & Travis</span>
+                </div>
+                <h2 className="mb-4 text-4xl font-bold tracking-tighter lg:text-5xl">Rent a Boat</h2>
+                <p className="mb-8 max-w-sm text-neutral-300">
+                  Hit the water in style. From pontoon boats to luxury yachts, we have the perfect vessel for your lake day.
+                </p>
+                <span className="inline-flex w-fit items-center gap-3 rounded-full bg-white px-6 py-3 font-semibold text-black transition-colors hover:bg-neutral-200">
+                  <Anchor className="h-4 w-4" />
+                  View Boats
+                  <ArrowRight className="h-4 w-4" />
+                </span>
+              </div>
+            </Link>
+          </motion.div>
+        </div>
       </section>
     </>
   );

@@ -21,7 +21,7 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
   return (
     <div className="relative">
       <div className="relative w-full overflow-hidden rounded-xl bg-slate-100">
-        <img src={images[index]} alt={`${alt} ${index + 1}`} className="block h-auto w-full" style={{ imageOrientation: "from-image" }} />
+        <img src={images[index]} alt={`${alt} ${index + 1}`} className="block h-auto w-full" style={{ imageOrientation: "none" }} />
       </div>
 
       <button

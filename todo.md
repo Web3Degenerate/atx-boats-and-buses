@@ -1,70 +1,67 @@
 # ATX Boats and Buses — Implementation Todo
 
-## Phase 1: Scaffolding + Static Pages ✅
-- [x] 1.1 Create Next.js app with TypeScript + Tailwind + App Router
-- [x] 1.2 Configure Tailwind theme (colors, fonts)
-- [x] 1.3 Copy/organize images into `/public/images/`
-- [x] 1.4 Create `types/index.ts` and `data/vehicles.ts`
-- [x] 1.5 Build UI primitives: Button, Container
-- [x] 1.6 Build Navbar and Footer
-- [x] 1.7 Build Homepage: Hero + VehicleCard grid
-- [x] 1.8 Build Vehicle Detail page: ImageGallery + VehicleDetails (static, no booking yet)
-
-## Phase 2: Database + Availability API ✅
-- [x] 2.1 Create `scripts/seed.sql` with all tables (vehicles, bookings, blocked_dates, site_settings)
-- [x] 2.2 Build `lib/db.ts` connection helper
-- [x] 2.3 Build `lib/availability.ts` logic (resolves short IDs to DB UUIDs via slug)
-- [x] 2.4 Build `GET /api/availability` route
-
-## Phase 3: Booking UI ✅
-- [x] 3.1 Install react-day-picker + date-fns
-- [x] 3.2 Build DatePicker component
-- [x] 3.3 Build TimeRangeSelector component
-- [x] 3.4 Build BookingForm component
-- [x] 3.5 Integrate BookingForm into vehicle detail page
-
-## Phase 4: Stripe Payment Flow ✅
-- [x] 4.1 Build `lib/stripe.ts` client
-- [x] 4.2 Build `POST /api/checkout` with manual capture (authorization hold)
-- [x] 4.3 Build `POST /api/webhooks/stripe` handler (creates pending_approval bookings)
-- [x] 4.4 Build `/booking/success` page
-- [x] 4.5 Build `/booking/cancel` page
-- [x] 4.6 Add idempotency (unique stripe_session_id) + checkout.session.expired handling
-
-## Phase 5: Email Confirmation ✅
-- [x] 5.1 Build `lib/resend.ts` client (lazy getter pattern)
-- [x] 5.2 Build BookingConfirmation email template
-- [x] 5.3 Integrate emails into webhook: customer "request received" + manager notification
-- [x] 5.4 Approval email: sent when manager approves booking
-- [x] 5.5 Rejection email: sent when manager rejects booking
-
-## Phase 6: Admin Portal ✅
-- [x] 6.1 Build admin layout with password auth (in-memory tokens, AdminGuard)
-- [x] 6.2 Build admin bookings dashboard with approve/reject buttons
-- [x] 6.3 Build pricing manager (price/hr, min/max hours, fuel charge % per vehicle)
-- [x] 6.4 Build blocked dates manager
-- [x] 6.5 Build `POST /api/admin/bookings/approve` (captures Stripe payment)
-- [x] 6.6 Build `POST /api/admin/bookings/reject` (cancels Stripe auth)
+## Phases 1-6: Complete ✅
+*(Scaffolding, DB, Booking UI, Stripe, Email, Admin — all done)*
 
 ## Booking UI Overhaul ✅
-- [x] Unified booking form (UnifiedBookingForm.tsx) for buses and boats
-- [x] CalendarPicker component (react-day-picker popover with close-on-click fix)
-- [x] TimeSlotGrid component (dynamic columns from slots prop)
-- [x] Bus flow: two-date selector, 9AM-11PM pickup, 12AM-2AM + 9AM-11PM return, 48hr max
-- [x] Boat flow: single date, 9AM-4PM pickup, same-day return, 4hr max
-- [x] Per-vehicle fuel charge toggle in admin
-- [x] Dynamic vehicle data from DB (`/api/vehicles` with force-dynamic)
-- [x] Contact page with form + click-to-call
+*(Unified form, CalendarPicker, TimeSlotGrid, bus/boat flows — all done)*
 
-## Phase 7: Polish (TODO)
-- [ ] 7.1 SEO metadata, globals cleanup
-- [ ] 7.2 Loading states and error handling
-- [ ] 7.3 Mobile responsiveness pass
-- [ ] 7.4 Change "Vehicles" nav link to "About Us" + create About Us page
-- [ ] 7.5 Update homepage CTA button ("Browse Vehicles" → TBD)
-- [ ] 7.6 Frontend design skill for UI restyling
+---
+
+## Phase 8: Homepage Redesign — Dark Premium Theme + Category Pages
+
+### Goal
+Simplify the homepage to give the user two clear choices: **Rent a Bus** or **Rent a Boat**. Each links to a category page showing the two vehicle options within that category. Selecting a vehicle goes to the existing booking/detail page. The new dark theme from `example_images/ai_studio_design/page.tsx` should be consistent across all pages.
+
+### User Flow
+```
+Homepage  →  /buses  →  /vehicles/prevost-tour-bus   (existing booking page)
+                    →  /vehicles/executive-shuttle    (existing booking page)
+
+Homepage  →  /boats  →  /vehicles/carver-yacht        (existing booking page)
+                    →  /vehicles/cruiser-yacht         (existing booking page)
+```
+
+### Phase 8a: Setup & Dependencies
+- [ ] 1. Install `motion` and `lucide-react` packages
+- [ ] 2. Copy images to `public/` — `boat-slider-image-default.webp`, `bus-slider-image-default.webp`, `logo.webp` from `example_images/ai_studio_design/`
+
+### Phase 8b: Global Theme Changes
+- [ ] 3. Update `app/layout.tsx` body classes from light (`bg-slate-50 text-slate-900`) to dark (`bg-neutral-950 text-white`)
+- [ ] 4. Restyle `components/layout/Navbar.tsx` — dark bg, white text, backdrop blur, updated logo, nav links: Bus Rentals, Boat Rentals, About Us, Contact
+- [ ] 5. Restyle `components/layout/Footer.tsx` — dark theme, border-top, 4-column grid (logo+description, social icons, services links, company links)
+- [ ] 6. Update `components/ui/Button.tsx` — white bg, black text, rounded-full pill shape to match design
+- [ ] 7. Update `components/ui/Container.tsx` — bump max-width to `max-w-7xl`
+
+### Phase 8c: Homepage Redesign
+- [ ] 8. Rewrite `app/page.tsx` — replace vehicle card grid with:
+  - Hero section: background image, "Explore Austin in Style" heading, two CTA buttons (Rent a Bus → `/buses`, Rent a Boat → `/boats`)
+  - Two large service cards (Bus + Boat) with background images, overlay gradients, hover zoom effects
+  - Motion animations for fade-in
+
+### Phase 8d: Category Pages (NEW)
+- [ ] 9. Create `app/buses/page.tsx` — dark-themed page showing two bus vehicle cards (Prevost Tour Bus, Executive Shuttle). Fetches from `/api/vehicles`, filters `type === "party-bus"`. Each card links to `/vehicles/[slug]`.
+- [ ] 10. Create `app/boats/page.tsx` — same pattern for boats. Filters `type === "party-boat"`. Each card links to `/vehicles/[slug]`.
+
+### Phase 8e: Restyle Existing Pages for Dark Theme
+- [ ] 11. Update `app/vehicles/[slug]/page.tsx` — dark theme text/bg colors (e.g., `text-slate-700` → `text-neutral-300`, skeletons `bg-slate-200` → `bg-neutral-800`)
+- [ ] 12. Update `components/vehicles/VehicleCard.tsx` — dark card bg, white text
+- [ ] 13. Update `app/contact/page.tsx` / `components/contact/ContactForm.tsx` — dark theme adjustments
+
+### Phase 8f: Cleanup
+- [ ] 14. Remove old `#vehicles` anchor references
+- [ ] 15. Verify all pages are consistent with dark theme
+
+---
+
+## Notes
+- All existing booking functionality (UnifiedBookingForm, checkout, webhooks, etc.) stays **untouched**
+- Homepage becomes a landing/funnel page — no longer shows individual vehicle cards directly
+- Category pages (`/buses`, `/boats`) replace the old vehicle grid
+- Admin pages (`/admin/*`) are **NOT** restyled — stay as-is
+- The `VehicleCard` component gets reused on category pages with dark styling
 
 ---
 
 ## Review
-Phases 1-6 complete. Booking UI overhauled with unified form, calendar pickers, and dynamic time slot grids. Approval workflow with Stripe manual capture implemented. Admin portal fully functional with approve/reject, pricing, and blocked dates management. Contact page added. All code compiles clean (`npm run build` passes). Database hosted on Supabase cloud.
+*(to be filled after implementation)*

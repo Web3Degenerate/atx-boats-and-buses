@@ -93,7 +93,7 @@ export default function CalendarPicker({
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full z-50 mt-2 rounded-lg border border-slate-200 bg-white p-3 shadow-lg">
+        <div className="absolute left-0 top-full z-50 mt-2 rounded-lg border border-slate-200 bg-white p-3 text-slate-900 shadow-lg">
           <DayPicker
             mode="single"
             selected={selected}

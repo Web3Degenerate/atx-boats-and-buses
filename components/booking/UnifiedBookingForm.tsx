@@ -329,7 +329,7 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
             <select
               value={guestCount}
               onChange={(event) => setGuestCount(event.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
             >
               <option value="">Number of guests</option>
               {Array.from({ length: vehicle.capacity }, (_, index) => index + 1).map((count) => (
