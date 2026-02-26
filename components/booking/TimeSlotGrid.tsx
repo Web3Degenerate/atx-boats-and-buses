@@ -25,8 +25,8 @@ export default function TimeSlotGrid({ slots, selectedTime, onTimeSelect, label 
   }
 
   return (
-    <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-4">
-      <h3 className="text-lg font-semibold text-primary">{label}</h3>
+    <div className="space-y-2 rounded-lg border border-white/10 bg-neutral-800 p-4">
+      <h3 className="text-lg font-semibold text-white">{label}</h3>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {columns.map((column, columnIndex) => (
           <div key={columnIndex} className="space-y-2">
@@ -43,8 +43,8 @@ export default function TimeSlotGrid({ slots, selectedTime, onTimeSelect, label 
                     isSelected
                       ? "bg-secondary font-bold text-primary"
                       : slot.isAvailable
-                        ? "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                        : "border-slate-200 bg-slate-100 text-slate-400"
+                        ? "border-white/10 bg-neutral-700 text-white hover:bg-neutral-600"
+                        : "border-white/10 bg-neutral-900 text-neutral-600"
                   }`}
                 >
                   {formatTime12h(slot.startTime)}

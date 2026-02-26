@@ -305,18 +305,18 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
   }
 
   return (
-    <form className="space-y-6 rounded-xl border border-slate-200 bg-slate-50 p-5" onSubmit={handleSubmit}>
+    <form className="space-y-6 rounded-xl border border-white/10 bg-neutral-900 p-5" onSubmit={handleSubmit}>
       <div>
-        <h2 className="text-2xl font-bold text-primary">Book This Vehicle</h2>
-        <p className="mt-1 text-sm text-slate-600">
+        <h2 className="text-2xl font-bold text-white">Book This Vehicle</h2>
+        <p className="mt-1 text-sm text-neutral-400">
           Minimum booking: {vehicle.minimumHours} hours · Maximum: {vehicle.maximumHours} hours
         </p>
       </div>
 
-      <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4">
+      <div className="space-y-4 rounded-lg border border-white/10 bg-neutral-800 p-4">
         <div className="flex flex-col gap-4 md:flex-row">
           <label className="flex-1 space-y-1">
-            <span className="text-sm font-medium text-slate-700">Pickup Date</span>
+            <span className="text-sm font-medium text-neutral-300">Pickup Date</span>
             <CalendarPicker
               placeholder="Select pickup date"
               selectedDate={pickupDate}
@@ -325,11 +325,11 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
           </label>
 
           <label className="flex-1 space-y-1">
-            <span className="text-sm font-medium text-slate-700">Guest Count</span>
+            <span className="text-sm font-medium text-neutral-300">Guest Count</span>
             <select
               value={guestCount}
               onChange={(event) => setGuestCount(event.target.value)}
-              className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+              className="w-full rounded-md border border-white/10 bg-neutral-700 px-3 py-2 text-sm text-white"
             >
               <option value="">Number of guests</option>
               {Array.from({ length: vehicle.capacity }, (_, index) => index + 1).map((count) => (
@@ -346,7 +346,7 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
             type="button"
             disabled={!pickupDate || !guestCount || isLoadingPickup}
             onClick={handleViewPickupTimes}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-70"
+            className="rounded-md bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {isLoadingPickup ? "Loading..." : "View Available Pickup Times"}
           </button>
@@ -363,9 +363,9 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
       )}
 
       {pickupTime && (
-        <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4">
+        <div className="space-y-4 rounded-lg border border-white/10 bg-neutral-800 p-4">
           <label className="space-y-1">
-            <span className="text-sm font-medium text-slate-700">Return Date</span>
+            <span className="text-sm font-medium text-neutral-300">Return Date</span>
             <CalendarPicker
               placeholder="Select return date"
               selectedDate={returnDate}
@@ -376,7 +376,7 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
           </label>
 
           {isLoadingReturn ? (
-            <p className="text-sm text-slate-600">Loading return times...</p>
+            <p className="text-sm text-neutral-400">Loading return times...</p>
           ) : (
             returnDate && (
               <TimeSlotGrid
@@ -394,71 +394,71 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
         <>
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-1">
-              <span className="text-sm font-medium text-slate-700">Name</span>
+              <span className="text-sm font-medium text-neutral-300">Name</span>
               <input
                 type="text"
                 value={customerName}
                 onChange={(event) => setCustomerName(event.target.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-white/10 bg-neutral-700 px-3 py-2 text-sm text-white placeholder:text-neutral-500"
                 required
               />
             </label>
 
             <label className="space-y-1">
-              <span className="text-sm font-medium text-slate-700">Email</span>
+              <span className="text-sm font-medium text-neutral-300">Email</span>
               <input
                 type="email"
                 value={customerEmail}
                 onChange={(event) => setCustomerEmail(event.target.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-white/10 bg-neutral-700 px-3 py-2 text-sm text-white placeholder:text-neutral-500"
                 required
               />
             </label>
 
             <label className="space-y-1">
-              <span className="text-sm font-medium text-slate-700">Phone</span>
+              <span className="text-sm font-medium text-neutral-300">Phone</span>
               <input
                 type="tel"
                 value={customerPhone}
                 onChange={(event) => setCustomerPhone(event.target.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-white/10 bg-neutral-700 px-3 py-2 text-sm text-white placeholder:text-neutral-500"
                 required
               />
             </label>
           </div>
 
           <label className="block space-y-1">
-            <span className="text-sm font-medium text-slate-700">Notes</span>
+            <span className="text-sm font-medium text-neutral-300">Notes</span>
             <textarea
               rows={4}
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-white/10 bg-neutral-700 px-3 py-2 text-sm text-white placeholder:text-neutral-500"
               placeholder={`Enter any special requests or requests for a longer rental than the current ${vehicle.maximumHours} hour maximum...`}
             />
           </label>
 
-          <div className="rounded-lg bg-white p-4">
-            <h3 className="text-lg font-semibold text-primary">Price Summary</h3>
-            <div className="mt-2 space-y-1 text-sm text-slate-700">
+          <div className="rounded-lg bg-neutral-800 p-4">
+            <h3 className="text-lg font-semibold text-white">Price Summary</h3>
+            <div className="mt-2 space-y-1 text-sm text-neutral-300">
               <p>Hours: {selectedHours || 0}</p>
               <p>Base: {formatCurrency(basePrice)}</p>
               {vehicle.fuelChargePercent > 0 && <p>Fuel Charge: {formatCurrency(fuelCharge)}</p>}
-              <p className="pt-1 text-base font-semibold text-slate-900">Total: {formatCurrency(totalPrice)}</p>
+              <p className="pt-1 text-base font-semibold text-white">Total: {formatCurrency(totalPrice)}</p>
             </div>
           </div>
 
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full rounded-md bg-secondary px-5 py-3 text-sm font-semibold text-primary transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-70"
+            className="w-full rounded-md bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {isSubmitting ? "Processing..." : "Proceed to Payment"}
           </button>
         </>
       )}
 
-      {submitError && <p className="text-sm text-red-600">{submitError}</p>}
+      {submitError && <p className="text-sm text-red-400">{submitError}</p>}
     </form>
   );
 }
