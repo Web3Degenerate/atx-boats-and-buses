@@ -52,7 +52,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
     }
 
-    const durationHours = (toMinutes(endTime) - toMinutes(startTime)) / 60;
+    const actualEndDate = endDate || date;
+    const startDateTime = new Date(`${date}T${startTime}:00`);
+    const endDateTime = new Date(`${actualEndDate}T${endTime}:00`);
+    const durationHours = (endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60 * 60);
 
     if (durationHours <= 0 || durationHours < vehicle.minimumHours) {
       return NextResponse.json(
