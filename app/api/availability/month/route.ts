@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAvailability } from "@/lib/availability";
 import { vehicles } from "@/data/vehicles";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   const vehicleId = request.nextUrl.searchParams.get("vehicleId");
   const month = request.nextUrl.searchParams.get("month");
