@@ -74,6 +74,13 @@ export async function POST(request: NextRequest) {
     const basePriceDollars = durationHours * vehicle.pricePerHour;
     const fuelChargeDollars = basePriceDollars * (appliedFuelChargePercent / 100);
     const totalPriceCents = Math.round((basePriceDollars + fuelChargeDollars) * 100);
+    const bookingDate = new Date(date + "T00:00:00");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const daysUntilBooking = Math.floor((bookingDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const isWithinTwoDays = daysUntilBooking <= 2;
+    const depositCents = isWithinTwoDays ? totalPriceCents : Math.round(totalPriceCents * 0.2);
+    const remainingCents = totalPriceCents - depositCents;
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
     if (!baseUrl) {
@@ -84,8 +91,9 @@ export async function POST(request: NextRequest) {
       payment_method_types: ["card"],
       mode: "payment",
       payment_intent_data: {
-        capture_method: "manual"
+        setup_future_usage: "off_session"
       },
+      customer_creation: "always",
       line_items: [
         {
           price_data: {
@@ -93,7 +101,7 @@ export async function POST(request: NextRequest) {
             product_data: {
               name: vehicle.name
             },
-            unit_amount: totalPriceCents
+            unit_amount: depositCents
           },
           quantity: 1
         }
@@ -111,7 +119,9 @@ export async function POST(request: NextRequest) {
         customerName,
         customerEmail,
         customerPhone,
-        notes: notes ?? ""
+        notes: notes ?? "",
+        depositAmount: String(depositCents),
+        remainingAmount: String(remainingCents)
       }
     });
 

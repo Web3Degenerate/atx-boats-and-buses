@@ -54,6 +54,9 @@ export async function POST(request: NextRequest) {
     const customerPhone = metadata.customerPhone;
     const notes = metadata.notes || null;
     const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : "";
+    const depositAmount = Number(metadata.depositAmount || 0);
+    const remainingAmount = Number(metadata.remainingAmount || 0);
+    const stripeCustomerId = typeof session.customer === "string" ? session.customer : "";
 
     if (
       !vehicleId ||
@@ -98,11 +101,14 @@ export async function POST(request: NextRequest) {
             guest_count,
             notes,
             total_price,
+            deposit_amount,
+            remaining_amount,
             status,
             stripe_session_id,
-            stripe_payment_intent_id
+            stripe_payment_intent_id,
+            stripe_customer_id
           )
-          VALUES ($1, $2, $3, $4, $5::date, $6::time, $7::time, $8, $9, $10, 'pending_approval', $11, $12)
+          VALUES ($1, $2, $3, $4, $5::date, $6::time, $7::time, $8, $9, $10, $11, $12, 'pending_approval', $13, $14, $15)
         `,
         [
           dbVehicleId,
@@ -115,17 +121,24 @@ export async function POST(request: NextRequest) {
           guestCount,
           notes,
           session.amount_total ?? 0,
+          depositAmount,
+          remainingAmount,
           session.id,
-          paymentIntentId
+          paymentIntentId,
+          stripeCustomerId
         ]
       );
 
       try {
+        const customerEmailText = remainingAmount > 0
+          ? `Hi ${customerName}, thank you for your booking request for ${matchedVehicle.name} on ${date}. Your 20% deposit of ${formatCurrency(depositAmount)} has been charged. Your remaining balance of ${formatCurrency(remainingAmount)} will be automatically charged 2 days before your booking date. You will receive a confirmation email once our team approves your booking. Thank you, ATX Boats and Buses`
+          : `Hi ${customerName}, thank you for your booking request for ${matchedVehicle.name} on ${date}. Your full payment of ${formatCurrency(depositAmount)} has been charged and will be refunded if your booking is not approved. You will receive a confirmation email once our team reviews your booking. Thank you, ATX Boats and Buses`;
+
         await getResend().emails.send({
           from: "ATX Boats and Buses <bookings@atxboatsandbuses.com>",
           to: customerEmail,
           subject: "Booking Request Received — ATX Boats and Buses",
-          text: `Hi ${customerName}, thank you for your booking request for ${matchedVehicle.name} from ${date} ${startTime} to ${endDate} ${endTime}. Your payment is on hold and will only be charged once our team reviews and approves your booking. You will receive a confirmation email once approved. If not approved within 7 days, the hold on your payment will be automatically released. Thank you, ATX Boats and Buses`
+          text: customerEmailText
         });
       } catch (error) {
         console.error("Resend customer booking request email failed:", error);

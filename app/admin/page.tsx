@@ -102,14 +102,14 @@ export default function AdminBookingsPage() {
     }
   }
 
-  async function handleReject(bookingId: string) {
+  async function handleReject(bookingId: string, refund = true) {
     const token = window.localStorage.getItem("admin_token");
     if (!token) {
       router.replace("/admin/login");
       return;
     }
 
-    const reason = window.prompt("Optional rejection reason:") || "";
+    const reason = refund ? window.prompt("Optional rejection reason:") || "" : "";
 
     setActionBookingId(bookingId);
     try {
@@ -119,7 +119,7 @@ export default function AdminBookingsPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ bookingId, reason })
+        body: JSON.stringify({ bookingId, reason, refund })
       });
 
       if (response.status === 401) {
@@ -193,6 +193,17 @@ export default function AdminBookingsPage() {
                       className="rounded bg-red-600 px-2 py-1 text-xs font-semibold text-white disabled:opacity-70"
                     >
                       Reject
+                    </button>
+                  </div>
+                )}
+                {booking.status === "confirmed" && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleReject(booking.id, false)}
+                      disabled={actionBookingId !== null}
+                      className="rounded bg-neutral-600 px-2 py-1 text-xs font-semibold text-white hover:bg-neutral-700 disabled:opacity-70"
+                    >
+                      Cancel (no refund)
                     </button>
                   </div>
                 )}

@@ -227,15 +227,15 @@ export default function AdminBlockedDatesPage() {
       </form>
 
       <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
+        <table className="min-w-full divide-y divide-slate-200 text-sm text-slate-900">
           <thead className="bg-slate-50">
             <tr>
-              <th className="px-3 py-2 text-left font-semibold">Vehicle</th>
-              <th className="px-3 py-2 text-left font-semibold">Start Date</th>
-              <th className="px-3 py-2 text-left font-semibold">Start Time</th>
-              <th className="px-3 py-2 text-left font-semibold">End Date</th>
-              <th className="px-3 py-2 text-left font-semibold">Reason</th>
-              <th className="px-3 py-2 text-left font-semibold">Action</th>
+              <th className="px-3 py-2 text-left font-semibold text-slate-900">Vehicle</th>
+              <th className="px-3 py-2 text-left font-semibold text-slate-900">Start Date</th>
+              <th className="px-3 py-2 text-left font-semibold text-slate-900">Start Time</th>
+              <th className="px-3 py-2 text-left font-semibold text-slate-900">End Date</th>
+              <th className="px-3 py-2 text-left font-semibold text-slate-900">Reason</th>
+              <th className="px-3 py-2 text-left font-semibold text-slate-900">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
