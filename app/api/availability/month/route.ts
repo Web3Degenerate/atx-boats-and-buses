@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
   // Two queries total instead of ~30 per month
   const [blockedResult, bookingsResult] = await Promise.all([
     query<{ start_date: string; start_time: string; end_date: string; end_time: string }>(
-      `SELECT start_date, start_time::text, end_date, end_time::text
+      `SELECT start_date::text, start_time::text, end_date::text, end_time::text
        FROM blocked_dates
        WHERE vehicle_id = $1
          AND start_date <= $2::date
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       [dbVehicleId, lastDay, firstDay]
     ),
     query<{ date: string; start_time: string; end_time: string }>(
-      `SELECT date, start_time::text, end_time::text
+      `SELECT date::text, start_time::text, end_time::text
        FROM bookings
        WHERE vehicle_id = $1
          AND date >= $2::date
