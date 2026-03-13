@@ -151,7 +151,7 @@ export default function AdminPricingPage() {
                 step="0.01"
                 value={vehicle.pricePerHourDollars}
                 onChange={(event) => updateVehicle(vehicle.id, "pricePerHourDollars", event.target.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-black"
               />
             </label>
             <label className="space-y-1">
@@ -160,7 +160,7 @@ export default function AdminPricingPage() {
                 type="number"
                 value={vehicle.minimumHours}
                 onChange={(event) => updateVehicle(vehicle.id, "minimumHours", event.target.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-black"
               />
             </label>
             <label className="space-y-1">
@@ -169,7 +169,7 @@ export default function AdminPricingPage() {
                 type="number"
                 value={vehicle.maximumHours}
                 onChange={(event) => updateVehicle(vehicle.id, "maximumHours", event.target.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-black"
               />
             </label>
             <div className="space-y-2">
@@ -189,7 +189,7 @@ export default function AdminPricingPage() {
                   value={vehicle.fuelChargePercent}
                   disabled={Number(vehicle.fuelChargePercent) === 0}
                   onChange={(event) => updateVehicle(vehicle.id, "fuelChargePercent", event.target.value)}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-400"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-black disabled:bg-slate-100 disabled:text-slate-400"
                 />
               </label>
             </div>

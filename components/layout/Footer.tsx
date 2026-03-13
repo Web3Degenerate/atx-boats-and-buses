@@ -45,7 +45,7 @@ export default function Footer() {
           <ul className="space-y-3 text-neutral-400">
             <li>
               <Link href="/buses" className="transition-colors hover:text-white">
-                Party Buses
+                Executive Shuttles
               </Link>
             </li>
             <li>
@@ -55,7 +55,7 @@ export default function Footer() {
             </li>
             <li>
               <Link href="/boats" className="transition-colors hover:text-white">
-                Pontoon Rentals
+                Cobalt Rentals
               </Link>
             </li>
             <li>

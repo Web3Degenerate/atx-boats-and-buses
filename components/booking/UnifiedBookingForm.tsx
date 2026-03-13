@@ -77,6 +77,7 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
 
   const [availablePickupSlots, setAvailablePickupSlots] = useState<TimeSlot[]>([]);
   const [availableReturnSlots, setAvailableReturnSlots] = useState<TimeSlot[]>([]);
+  const [disabledPickupDates, setDisabledPickupDates] = useState<Date[]>([]);
   const [showPickupTimes, setShowPickupTimes] = useState(false);
   const [isLoadingPickup, setIsLoadingPickup] = useState(false);
   const [isLoadingReturn, setIsLoadingReturn] = useState(false);
@@ -209,6 +210,50 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
   }
 
   useEffect(() => {
+    let isMounted = true;
+
+    async function fetchDisabledDates() {
+      const now = new Date();
+      const months: string[] = [];
+
+      for (let index = 0; index < 3; index += 1) {
+        const date = new Date(now.getFullYear(), now.getMonth() + index, 1);
+        months.push(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`);
+      }
+
+      const allDisabled: Date[] = [];
+
+      for (const month of months) {
+        try {
+          const response = await fetch(`/api/availability/month?vehicleId=${vehicle.id}&month=${month}`);
+          if (!response.ok) {
+            continue;
+          }
+
+          const data = (await response.json()) as { disabledDates?: string[] };
+          for (const dateStr of data.disabledDates ?? []) {
+            const [year, monthNumber, day] = dateStr.split("-").map(Number);
+            allDisabled.push(new Date(year, monthNumber - 1, day));
+          }
+        } catch {
+          // Ignore background disabled-date preload failures.
+        }
+      }
+
+      if (isMounted) {
+        setDisabledPickupDates(allDisabled);
+      }
+    }
+
+    setDisabledPickupDates([]);
+    fetchDisabledDates();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [vehicle]);
+
+  useEffect(() => {
     if (!pickupTime || !pickupDate) {
       setReturnDate("");
       setReturnTime("");
@@ -321,6 +366,7 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
               placeholder="Select pickup date"
               selectedDate={pickupDate}
               onDateSelect={handlePickupDateChange}
+              disabledDates={disabledPickupDates}
             />
           </label>
 

@@ -142,20 +142,20 @@ export default function AdminBookingsPage() {
 
   return (
     <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-      <table className="min-w-full divide-y divide-slate-200 text-sm">
+      <table className="min-w-full divide-y divide-slate-200 text-sm text-slate-900">
         <thead className="bg-slate-50">
           <tr>
-            <th className="px-3 py-2 text-left font-semibold">Vehicle</th>
-            <th className="px-3 py-2 text-left font-semibold">Customer</th>
-            <th className="px-3 py-2 text-left font-semibold">Email</th>
-            <th className="px-3 py-2 text-left font-semibold">Phone</th>
-            <th className="px-3 py-2 text-left font-semibold">Date</th>
-            <th className="px-3 py-2 text-left font-semibold">Time</th>
-            <th className="px-3 py-2 text-left font-semibold">Guests</th>
-            <th className="px-3 py-2 text-left font-semibold">Total</th>
-            <th className="px-3 py-2 text-left font-semibold">Status</th>
-            <th className="px-3 py-2 text-left font-semibold">Booked At</th>
-            <th className="px-3 py-2 text-left font-semibold">Actions</th>
+            <th className="px-3 py-2 text-left font-semibold text-slate-900">Vehicle</th>
+            <th className="px-3 py-2 text-left font-semibold text-slate-900">Customer</th>
+            <th className="px-3 py-2 text-left font-semibold text-slate-900">Email</th>
+            <th className="px-3 py-2 text-left font-semibold text-slate-900">Phone</th>
+            <th className="px-3 py-2 text-left font-semibold text-slate-900">Date</th>
+            <th className="px-3 py-2 text-left font-semibold text-slate-900">Time</th>
+            <th className="px-3 py-2 text-left font-semibold text-slate-900">Guests</th>
+            <th className="px-3 py-2 text-left font-semibold text-slate-900">Total</th>
+            <th className="px-3 py-2 text-left font-semibold text-slate-900">Status</th>
+            <th className="px-3 py-2 text-left font-semibold text-slate-900">Booked At</th>
+            <th className="px-3 py-2 text-left font-semibold text-slate-900">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">

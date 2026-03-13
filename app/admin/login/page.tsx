@@ -50,7 +50,7 @@ export default function AdminLoginPage() {
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-black"
           />
         </label>
         {error && <p className="text-sm text-red-600">{error}</p>}

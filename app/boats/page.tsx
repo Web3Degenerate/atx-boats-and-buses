@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import VehicleCard from "@/components/vehicles/VehicleCard";
 import { Vehicle } from "@/types";
@@ -50,9 +51,44 @@ export default function BoatsPage() {
         <>
           {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-            {boats.map((vehicle) => (
-              <VehicleCard key={vehicle.id} vehicle={vehicle} />
-            ))}
+            {boats.map((vehicle) =>
+              vehicle.slug === "cruiser-yacht" ? (
+                <article
+                  key={vehicle.id}
+                  className="flex h-full flex-col overflow-hidden rounded-xl border border-white/10 bg-neutral-900 shadow-sm"
+                >
+                  <div className="relative h-48 w-full bg-neutral-800">
+                    <Image
+                      src={vehicle.images[0]}
+                      alt={vehicle.name}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
+                    />
+                  </div>
+                  <div className="flex flex-1 flex-col space-y-3 p-5">
+                    <h3 className="text-xl font-semibold text-white">Cobalt Boats Coming Soon</h3>
+                    <p className="flex-1 text-sm text-neutral-400">
+                      Our fleet features Cobalt Boats renowned for their deep-V hull design, ensuring a
+                      smooth and stable ride by cutting through waves rather than bouncing over them
+                    </p>
+                    {/* <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-neutral-200">Up to {vehicle.capacity} guests</span>
+                      <span className="font-semibold text-emerald-400">${vehicle.pricePerHour}/hr</span>
+                    </div> */}
+                    <div aria-hidden="true" className="h-6" />
+                    <button
+                      type="button"
+                      className="inline-flex w-full cursor-default items-center justify-center gap-2 rounded-full bg-red-600 px-8 py-4 font-semibold text-white"
+                    >
+                      Coming Soon
+                    </button>
+                  </div>
+                </article>
+              ) : (
+                <VehicleCard key={vehicle.id} vehicle={vehicle} />
+              ),
+            )}
           </div>
         </>
       )}

@@ -12,6 +12,13 @@ type BookingRow = {
   end_time: string;
 };
 
+type BlockedRangeRow = {
+  start_date: string;
+  start_time: string;
+  end_date: string;
+  end_time: string;
+};
+
 type AvailabilityResult = {
   vehicleId: string;
   date: string;
@@ -26,6 +33,17 @@ function toMinutes(timeValue: string): number {
 
 function formatTime(hour: number): string {
   return `${String(hour).padStart(2, "0")}:00`;
+}
+
+function getBlockedRangeForDate(blockedRange: BlockedRangeRow, date: string): { start: number; end: number } | null {
+  if (date < blockedRange.start_date || date > blockedRange.end_date) {
+    return null;
+  }
+
+  const start = blockedRange.start_date === date ? toMinutes(blockedRange.start_time) : 0;
+  const end = blockedRange.end_date === date ? toMinutes(blockedRange.end_time) : 24 * 60;
+
+  return { start, end };
 }
 
 function generateSlots(): TimeSlot[] {
@@ -58,33 +76,6 @@ export async function getAvailability(vehicleId: string, date: string): Promise<
     return { vehicleId, date, isBlocked: false, slots: generateSlots().map((s) => ({ ...s, date })) };
   }
 
-  const blockedResult = await query<{ exists: boolean }>(
-    `
-      SELECT EXISTS(
-        SELECT 1
-        FROM blocked_dates
-        WHERE vehicle_id = $1 AND date = $2::date
-      ) AS exists
-    `,
-    [dbVehicleId, date]
-  );
-
-  const isBlocked = blockedResult.rows[0]?.exists ?? false;
-
-  const slots = generateSlots().map((slot) => ({
-    ...slot,
-    date
-  }));
-
-  if (isBlocked) {
-    return {
-      vehicleId,
-      date,
-      isBlocked: true,
-      slots: slots.map((slot) => ({ ...slot, isAvailable: false }))
-    };
-  }
-
   const bookingsResult = await query<BookingTimeRow>(
     `
       SELECT start_time::text, end_time::text
@@ -96,27 +87,51 @@ export async function getAvailability(vehicleId: string, date: string): Promise<
     [dbVehicleId, date]
   );
 
+  const blockedRangesResult = await query<BlockedRangeRow>(
+    `
+      SELECT start_date, start_time::text, end_date, end_time::text
+      FROM blocked_dates
+      WHERE vehicle_id = $1
+        AND start_date <= $2::date
+        AND end_date >= $2::date
+    `,
+    [dbVehicleId, date]
+  );
+
+  const slots = generateSlots().map((slot) => ({
+    ...slot,
+    date
+  }));
+
   const bookings = bookingsResult.rows.map((row: BookingRow) => ({
     start: toMinutes(row.start_time),
     end: toMinutes(row.end_time)
   }));
 
+  const blockedRanges = blockedRangesResult.rows
+    .map((range) => getBlockedRangeForDate(range, date))
+    .filter((range): range is { start: number; end: number } => Boolean(range));
+
   const availabilitySlots = slots.map((slot) => {
     const slotStart = toMinutes(slot.startTime);
     const slotEnd = toMinutes(slot.endTime);
 
-    const overlaps = bookings.some((booking: { start: number; end: number }) => slotStart < booking.end && slotEnd > booking.start);
+    const overlapsBooking = bookings.some(
+      (booking: { start: number; end: number }) => slotStart < booking.end && slotEnd > booking.start
+    );
+    const overlapsBlockedRange = blockedRanges.some((blockedRange) => slotStart < blockedRange.end && slotEnd > blockedRange.start);
 
     return {
       ...slot,
-      isAvailable: !overlaps
+      isAvailable: !overlapsBooking && !overlapsBlockedRange,
+      isBlockedByRange: overlapsBlockedRange
     };
   });
 
   return {
     vehicleId,
     date,
-    isBlocked: false,
-    slots: availabilitySlots
+    isBlocked: availabilitySlots.length > 0 && availabilitySlots.every((slot) => slot.isBlockedByRange),
+    slots: availabilitySlots.map(({ isBlockedByRange, ...slot }) => slot)
   };
 }
