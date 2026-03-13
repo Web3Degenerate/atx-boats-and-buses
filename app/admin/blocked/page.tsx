@@ -41,7 +41,6 @@ export default function AdminBlockedDatesPage() {
   const [startDate, setStartDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [endTime, setEndTime] = useState("");
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -129,7 +128,6 @@ export default function AdminBlockedDatesPage() {
         startDate,
         startTime,
         endDate,
-        endTime,
         reason
       })
     });
@@ -137,7 +135,6 @@ export default function AdminBlockedDatesPage() {
     setStartDate("");
     setStartTime("");
     setEndDate("");
-    setEndTime("");
     setReason("");
     await refreshBlockedDates();
   }
@@ -169,7 +166,7 @@ export default function AdminBlockedDatesPage() {
     <div className="space-y-6">
       <form onSubmit={handleAdd} className="rounded-lg border border-slate-200 bg-white p-4">
         <h2 className="text-lg font-semibold text-primary">Block a Date and Time Range</h2>
-        <div className="mt-3 grid gap-3 md:grid-cols-5">
+        <div className="mt-3 grid gap-3 md:grid-cols-4">
           <label className="space-y-1">
             <span className="text-sm text-slate-700">Vehicle</span>
             <select
@@ -214,17 +211,7 @@ export default function AdminBlockedDatesPage() {
               required
             />
           </label>
-          <label className="space-y-1">
-            <span className="text-sm text-slate-700">End Time</span>
-            <input
-              type="time"
-              value={endTime}
-              onChange={(event) => setEndTime(event.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-black"
-              required
-            />
-          </label>
-          <label className="space-y-1 md:col-span-5">
+          <label className="space-y-1 md:col-span-4">
             <span className="text-sm text-slate-700">Reason (optional)</span>
             <input
               type="text"
@@ -247,7 +234,6 @@ export default function AdminBlockedDatesPage() {
               <th className="px-3 py-2 text-left font-semibold">Start Date</th>
               <th className="px-3 py-2 text-left font-semibold">Start Time</th>
               <th className="px-3 py-2 text-left font-semibold">End Date</th>
-              <th className="px-3 py-2 text-left font-semibold">End Time</th>
               <th className="px-3 py-2 text-left font-semibold">Reason</th>
               <th className="px-3 py-2 text-left font-semibold">Action</th>
             </tr>
@@ -259,7 +245,6 @@ export default function AdminBlockedDatesPage() {
                 <td className="px-3 py-2">{item.start_date}</td>
                 <td className="px-3 py-2">{formatDisplayTime(item.start_time)}</td>
                 <td className="px-3 py-2">{item.end_date}</td>
-                <td className="px-3 py-2">{formatDisplayTime(item.end_time)}</td>
                 <td className="px-3 py-2">{item.reason || "-"}</td>
                 <td className="px-3 py-2">
                   <button onClick={() => handleRemove(item.id)} className="text-sm font-medium text-red-600 hover:text-red-700">

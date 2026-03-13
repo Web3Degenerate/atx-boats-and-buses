@@ -51,16 +51,15 @@ export async function POST(request: NextRequest) {
     startDate?: string;
     startTime?: string;
     endDate?: string;
-    endTime?: string;
     reason?: string;
   };
 
-  if (!body.vehicleId || !body.startDate || !body.startTime || !body.endDate || !body.endTime) {
+  if (!body.vehicleId || !body.startDate || !body.startTime || !body.endDate) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
   const startValue = `${body.startDate}T${body.startTime}`;
-  const endValue = `${body.endDate}T${body.endTime}`;
+  const endValue = `${body.endDate}T21:00`;
   if (startValue > endValue) {
     return NextResponse.json({ error: "End must be after start" }, { status: 400 });
   }
@@ -70,7 +69,7 @@ export async function POST(request: NextRequest) {
       INSERT INTO blocked_dates (vehicle_id, start_date, start_time, end_date, end_time, reason)
       VALUES ($1, $2::date, $3::time, $4::date, $5::time, $6)
     `,
-    [body.vehicleId, body.startDate, body.startTime, body.endDate, body.endTime, body.reason ?? null]
+    [body.vehicleId, body.startDate, body.startTime, body.endDate, "21:00", body.reason ?? null]
   );
 
   return NextResponse.json({ success: true });

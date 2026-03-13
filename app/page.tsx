@@ -90,7 +90,7 @@ export default function HomePage() {
                 </div>
                 <h2 className="mb-4 text-4xl font-bold tracking-tighter lg:text-5xl">Rent a Bus</h2>
                 <p className="mb-8 max-w-sm text-neutral-300">
-                  Experience luxury group travel with our premium party buses and coaches. Perfect for corporate events,
+                  Experience luxury group travel with our premium executive shuttles and coaches. Perfect for corporate events,
                   weddings, and city tours.
                 </p>
                 <span className="inline-flex w-fit items-center gap-3 rounded-full bg-white px-6 py-3 font-semibold text-black transition-colors hover:bg-neutral-200">
@@ -130,7 +130,7 @@ export default function HomePage() {
                 </div>
                 <h2 className="mb-4 text-4xl font-bold tracking-tighter lg:text-5xl">Rent a Boat</h2>
                 <p className="mb-8 max-w-sm text-neutral-300">
-                  Hit the water in style. From pontoon boats to luxury yachts, we have the perfect vessel for your lake day.
+                  Hit the water in style. From cobalt boats to luxury yachts, we have the perfect vessel for your lake day.
                 </p>
                 <span className="inline-flex w-fit items-center gap-3 rounded-full bg-white px-6 py-3 font-semibold text-black transition-colors hover:bg-neutral-200">
                   <Anchor className="h-4 w-4" />
