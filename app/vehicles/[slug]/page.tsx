@@ -5,42 +5,31 @@ import { useParams } from "next/navigation";
 import UnifiedBookingForm from "@/components/booking/UnifiedBookingForm";
 import Container from "@/components/ui/Container";
 import ImageCarousel from "@/components/vehicles/ImageCarousel";
+import ImageCarouselAnimated from "@/components/vehicles/ImageCarouselAnimated";
 import { Vehicle } from "@/types";
 
 const PREVOST_IMAGES = [
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-2-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-3-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-4-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-5-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-8-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-9-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-12-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-13-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-14-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-15-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-16-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-17-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-18-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-22-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-23-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-27-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-28-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-29-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-30-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-31-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-32-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-33-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-34-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-35-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-36-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-37-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-38-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-39-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-40-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-41-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-42-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-43-card.webp",
-  "/images/Luxury_Bus_1/Provost_gdrive/bus-44-card.webp",
+  "/images/Luxury_Bus_1/Provost_mar_15_2026/1bus-1.webp",
+  "/images/Luxury_Bus_1/Provost_mar_15_2026/2bus-2.webp",
+  "/images/Luxury_Bus_1/Provost_mar_15_2026/3bus-3.webp",
+  "/images/Luxury_Bus_1/Provost_mar_15_2026/4bus-4.webp",
+  "/images/Luxury_Bus_1/Provost_mar_15_2026/5bus-5.webp",
+  "/images/Luxury_Bus_1/Provost_mar_15_2026/6bus-6.webp",
+  "/images/Luxury_Bus_1/Provost_mar_15_2026/7bus-7.webp",
+  "/images/Luxury_Bus_1/Provost_mar_15_2026/8bus-8.webp",
+  "/images/Luxury_Bus_1/Provost_mar_15_2026/9bus-9.webp",
+  "/images/Luxury_Bus_1/Provost_mar_15_2026/10bus-10.webp",
+  "/images/Luxury_Bus_1/Provost_mar_15_2026/11bus-11.webp",
+  "/images/Luxury_Bus_1/Provost_mar_15_2026/12bus-12.webp",
+  "/images/Luxury_Bus_1/Provost_mar_15_2026/13bus-13.webp",
+  "/images/Luxury_Bus_1/Provost_mar_15_2026/14bus-14.webp",
+  "/images/Luxury_Bus_1/Provost_mar_15_2026/15bus-15.webp",
+  "/images/Luxury_Bus_1/Provost_mar_15_2026/16bus-16.webp",
+  "/images/Luxury_Bus_1/Provost_mar_15_2026/17bus-17.webp",
+  "/images/Luxury_Bus_1/Provost_mar_15_2026/18bus-18.webp",
+  "/images/Luxury_Bus_1/Provost_mar_15_2026/19bus-19.webp",
+  "/images/Luxury_Bus_1/Provost_mar_15_2026/20bus-20.webp",
+  "/images/Luxury_Bus_1/Provost_mar_15_2026/21bus-21.webp",
 ];
 
 const EXECUTIVE_SHUTTLE_IMAGES = [
@@ -132,7 +121,7 @@ export default function VehicleDetailPage() {
   return (
     <section className="py-12">
       <Container className="space-y-8">
-        <ImageCarousel
+        <ImageCarouselAnimated
           images={
             vehicle.slug === "prevost-tour-bus"
               ? PREVOST_IMAGES
