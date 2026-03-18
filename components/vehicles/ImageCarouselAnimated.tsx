@@ -24,15 +24,17 @@ export default function ImageCarouselAnimated({ images, alt }: ImageCarouselAnim
 
     const imgObjects = images.map((src, i) => ({ id: `img-${i}-${src}`, src }));
 
+    const sideCount = Math.min(4, Math.floor((imgObjects.length - 1) / 2));
+
     const leftImages = [];
-    for (let i = 4; i > 0; i--) {
-        leftImages.push(imgObjects[(currentIndex - i + imgObjects.length) % imgObjects.length]);
+    for (let i = sideCount; i > 0; i--) {
+        leftImages.push(imgObjects[((currentIndex - i) % imgObjects.length + imgObjects.length) % imgObjects.length]);
     }
 
     const activeImage = imgObjects[currentIndex];
 
     const rightImages = [];
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 1; i <= sideCount; i++) {
         rightImages.push(imgObjects[(currentIndex + i) % imgObjects.length]);
     }
 
