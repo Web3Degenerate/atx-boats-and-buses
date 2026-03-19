@@ -503,6 +503,19 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
             </div>
           </div>
 
+          {pickupDate && (
+            <div className="rounded-lg bg-neutral-800 p-4 space-y-3 text-sm text-neutral-300">
+              <h3 className="text-base font-semibold text-white">Booking Policies</h3>
+              {showDeposit ? (
+                <p>There is a nonrefundable 20% deposit at the time of booking. The remaining balance is due 2 days before the date of your reservation.</p>
+              ) : (
+                <p>Since this reservation is within 2 days of your booking, the entire balance of your rental is due today. Please note that this payment is nonrefundable since your reservation is within 2 days of your rental.</p>
+              )}
+              <p>Customers will receive a full refund in case of operator cancellation due to weather or other unforeseen circumstances.</p>
+              <p>Every member of your party must complete our electronic waiver form before the start of your reservation. You will be provided with said electronic waiver after you complete the booking.</p>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={isSubmitting}
