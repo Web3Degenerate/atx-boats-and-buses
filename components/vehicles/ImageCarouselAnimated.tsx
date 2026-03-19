@@ -55,7 +55,6 @@ export default function ImageCarouselAnimated({ images, alt }: ImageCarouselAnim
                                 transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
                                 src={img.src}
                                 alt={alt}
-                                style={{ imageOrientation: "none" }}
                                 className="h-[70%] w-auto object-contain rounded-2xl shrink-0 cursor-pointer shadow-lg"
                                 onClick={() => setCurrentIndex(imgObjects.findIndex((i) => i.id === img.id))}
                             />
@@ -75,7 +74,6 @@ export default function ImageCarouselAnimated({ images, alt }: ImageCarouselAnim
                             transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
                             src={activeImage.src}
                             alt={`${alt} - active`}
-                            style={{ imageOrientation: "none" }}
                             className="h-full max-w-[70vw] md:max-w-[60vw] w-auto object-contain rounded-2xl shadow-2xl ring-4 ring-white/10"
                         />
                     </AnimatePresence>
@@ -94,7 +92,6 @@ export default function ImageCarouselAnimated({ images, alt }: ImageCarouselAnim
                                 transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
                                 src={img.src}
                                 alt={alt}
-                                style={{ imageOrientation: "none" }}
                                 className="h-[70%] w-auto object-contain rounded-2xl shrink-0 cursor-pointer shadow-lg"
                                 onClick={() => setCurrentIndex(imgObjects.findIndex((i) => i.id === img.id))}
                             />
