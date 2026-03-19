@@ -480,7 +480,7 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
               className="w-full rounded-md border border-white/10 bg-neutral-700 px-3 py-2 text-sm text-white placeholder:text-neutral-500"
-              placeholder={`Enter any special requests or requests for a longer rental than the current ${vehicle.maximumHours} hour maximum...`}
+              placeholder={`Enter any special requests. If you would like to rent this ${vehicle.name} beyond the current ${vehicle.maximumHours} hour maximum rental period, please specify here and a manager will review your request.`}
             />
           </label>
 
