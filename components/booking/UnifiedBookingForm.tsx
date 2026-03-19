@@ -166,6 +166,12 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
   const fuelCharge = basePrice * (vehicle.fuelChargePercent / 100);
   const totalPrice = basePrice + fuelCharge;
 
+  const daysUntilBooking = pickupDate
+    ? Math.floor((new Date(pickupDate).getTime() - new Date(new Date().toDateString()).getTime()) / (1000 * 60 * 60 * 24))
+    : null;
+  const showDeposit = daysUntilBooking !== null && daysUntilBooking > 2;
+  const depositAmount = Math.round(totalPrice * 0.2);
+
   async function fetchAvailability(date: string, timeRange: string[]): Promise<TimeSlot[]> {
     const response = await fetch(`/api/availability?vehicleId=${vehicle.id}&date=${date}`);
 
@@ -491,6 +497,9 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
               <p>Base: {formatCurrency(basePrice)}</p>
               {vehicle.fuelChargePercent > 0 && <p>Fuel Charge: {formatCurrency(fuelCharge)}</p>}
               <p className="pt-1 text-base font-semibold text-white">Total: {formatCurrency(totalPrice)}</p>
+              {showDeposit && (
+                <p className="pt-1 text-base font-semibold text-emerald-400">20% Deposit Due Today: {formatCurrency(depositAmount)}</p>
+              )}
             </div>
           </div>
 
