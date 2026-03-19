@@ -15,6 +15,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <Link href="/admin/pricing" className="text-slate-700 hover:text-primary">
               Pricing
             </Link>
+            <Link href="/admin/coupons" className="text-slate-700 hover:text-primary">
+              Coupons
+            </Link>
             <Link href="/admin/blocked" className="text-slate-700 hover:text-primary">
               Blocked Dates
             </Link>

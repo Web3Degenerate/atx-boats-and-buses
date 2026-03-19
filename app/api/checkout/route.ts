@@ -14,10 +14,17 @@ type CheckoutRequestBody = {
   customerEmail?: string;
   customerPhone?: string;
   notes?: string;
+  couponId?: string | null;
 };
 
 type SettingRow = {
   value: string;
+};
+
+type CouponRow = {
+  id: string;
+  code: string;
+  discount_percent: number;
 };
 
 function toMinutes(time: string): number {
@@ -39,7 +46,8 @@ export async function POST(request: NextRequest) {
       customerName,
       customerEmail,
       customerPhone,
-      notes
+      notes,
+      couponId
     } = body;
 
     if (!vehicleId || !date || !startTime || !endTime || !guestCount || !customerName || !customerEmail || !customerPhone) {
@@ -74,13 +82,39 @@ export async function POST(request: NextRequest) {
     const basePriceDollars = durationHours * vehicle.pricePerHour;
     const fuelChargeDollars = basePriceDollars * (appliedFuelChargePercent / 100);
     const totalPriceCents = Math.round((basePriceDollars + fuelChargeDollars) * 100);
+    let appliedCoupon: CouponRow | null = null;
+
+    if (couponId) {
+      const couponResult = await query<CouponRow>(
+        `
+          SELECT id, code, discount_percent
+          FROM coupons
+          WHERE id = $1
+            AND active = TRUE
+            AND valid_from <= CURRENT_DATE
+            AND valid_to >= CURRENT_DATE
+          LIMIT 1
+        `,
+        [couponId]
+      );
+
+      appliedCoupon = couponResult.rows[0] || null;
+
+      if (!appliedCoupon) {
+        return NextResponse.json({ error: "Invalid or expired coupon code." }, { status: 400 });
+      }
+    }
+
+    const discountedTotalCents = appliedCoupon
+      ? Math.round(totalPriceCents * (1 - appliedCoupon.discount_percent / 100))
+      : totalPriceCents;
     const bookingDate = new Date(date + "T00:00:00");
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const daysUntilBooking = Math.floor((bookingDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     const isWithinTwoDays = daysUntilBooking <= 2;
-    const depositCents = isWithinTwoDays ? totalPriceCents : Math.round(totalPriceCents * 0.2);
-    const remainingCents = totalPriceCents - depositCents;
+    const depositCents = isWithinTwoDays ? discountedTotalCents : Math.round(discountedTotalCents * 0.2);
+    const remainingCents = discountedTotalCents - depositCents;
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
     if (!baseUrl) {
@@ -121,7 +155,8 @@ export async function POST(request: NextRequest) {
         customerPhone,
         notes: notes ?? "",
         depositAmount: String(depositCents),
-        remainingAmount: String(remainingCents)
+        remainingAmount: String(remainingCents),
+        ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {})
       }
     });
 

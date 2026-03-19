@@ -16,6 +16,12 @@ type AvailabilityResponse = {
   slots: TimeSlot[];
 };
 
+type CouponResponse = {
+  id: string;
+  code: string;
+  discountPercent: number;
+};
+
 function formatDateKey(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -74,6 +80,10 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [notes, setNotes] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponResponse | null>(null);
+  const [couponError, setCouponError] = useState("");
+  const [couponLoading, setCouponLoading] = useState(false);
 
   const [availablePickupSlots, setAvailablePickupSlots] = useState<TimeSlot[]>([]);
   const [availableReturnSlots, setAvailableReturnSlots] = useState<TimeSlot[]>([]);
@@ -165,12 +175,16 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
   const basePrice = selectedHours * vehicle.pricePerHour;
   const fuelCharge = basePrice * (vehicle.fuelChargePercent / 100);
   const totalPrice = basePrice + fuelCharge;
+  const discountedTotal = appliedCoupon
+    ? Math.round(totalPrice * (1 - appliedCoupon.discountPercent / 100))
+    : totalPrice;
+  const discountAmount = totalPrice - discountedTotal;
 
   const daysUntilBooking = pickupDate
     ? Math.floor((new Date(pickupDate).getTime() - new Date(new Date().toDateString()).getTime()) / (1000 * 60 * 60 * 24))
     : null;
   const showDeposit = daysUntilBooking !== null && daysUntilBooking > 2;
-  const depositAmount = Math.round(totalPrice * 0.2);
+  const depositAmount = Math.round(discountedTotal * 0.2);
 
   async function fetchAvailability(date: string, timeRange: string[]): Promise<TimeSlot[]> {
     const response = await fetch(`/api/availability?vehicleId=${vehicle.id}&date=${date}`);
@@ -212,6 +226,50 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
       setSubmitError("Unable to load pickup times. Please try again.");
     } finally {
       setIsLoadingPickup(false);
+    }
+  }
+
+  async function handleApplyCoupon() {
+    const trimmedCode = couponCode.trim();
+    if (!trimmedCode) {
+      setCouponError("Enter a coupon code.");
+      setAppliedCoupon(null);
+      return;
+    }
+
+    setCouponLoading(true);
+    setCouponError("");
+
+    try {
+      const response = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ code: trimmedCode })
+      });
+
+      const data = (await response.json()) as CouponResponse & { error?: string };
+
+      if (!response.ok) {
+        setAppliedCoupon(null);
+        setCouponError(data.error || "Invalid or expired coupon code.");
+        return;
+      }
+
+      setAppliedCoupon({
+        id: data.id,
+        code: data.code,
+        discountPercent: data.discountPercent
+      });
+      setCouponCode(data.code);
+      setCouponError("");
+    } catch (error) {
+      console.error(error);
+      setAppliedCoupon(null);
+      setCouponError("Unable to validate coupon code.");
+    } finally {
+      setCouponLoading(false);
     }
   }
 
@@ -335,7 +393,8 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
           customerName,
           customerEmail,
           customerPhone,
-          notes
+          notes,
+          couponId: appliedCoupon?.id ?? null
         })
       });
 
@@ -496,10 +555,57 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
               <p>Hours: {selectedHours || 0}</p>
               <p>Base: {formatCurrency(basePrice)}</p>
               {vehicle.fuelChargePercent > 0 && <p>Fuel Charge: {formatCurrency(fuelCharge)}</p>}
-              <p className="pt-1 text-base font-semibold text-white">Total: {formatCurrency(totalPrice)}</p>
+              {appliedCoupon && (
+                <p className="text-emerald-400">
+                  Discount (-{appliedCoupon.discountPercent}%): -{formatCurrency(discountAmount)}
+                </p>
+              )}
+              <p className="pt-1 text-base font-semibold text-white">Total: {formatCurrency(discountedTotal)}</p>
               {showDeposit && (
                 <p className="pt-1 text-base font-semibold text-emerald-400">20% Deposit Due Today: {formatCurrency(depositAmount)}</p>
               )}
+            </div>
+            <div className="mt-4 space-y-2">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={(event) => {
+                    setCouponCode(event.target.value);
+                    setCouponError("");
+                  }}
+                  placeholder="Coupon code"
+                  className="flex-1 rounded-md border border-white/10 bg-neutral-700 px-3 py-2 text-sm text-white placeholder:text-neutral-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyCoupon}
+                  disabled={couponLoading || !couponCode.trim()}
+                  className="rounded-md bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {couponLoading ? "Applying..." : "Apply"}
+                </button>
+              </div>
+              {appliedCoupon && (
+                <div className="flex items-center justify-between rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
+                  <span>
+                    Applied: {appliedCoupon.code} (-{appliedCoupon.discountPercent}%)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAppliedCoupon(null);
+                      setCouponCode("");
+                      setCouponError("");
+                    }}
+                    className="text-base leading-none text-emerald-300 hover:text-white"
+                    aria-label="Remove coupon"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+              {couponError && <p className="text-sm text-red-400">{couponError}</p>}
             </div>
           </div>
 
