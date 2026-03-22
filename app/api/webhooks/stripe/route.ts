@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
             stripe_payment_intent_id,
             stripe_customer_id
           )
-          VALUES ($1, $2, $3, $4, $5::date, $6::time, $7::time, $8, $9, $10, $11, $12, 'pending_approval', $13, $14, $15)
+          VALUES ($1, $2, $3, $4, $5::date, $6::time, $7::time, $8, $9, $10, $11, $12, 'confirmed', $13, $14, $15)
         `,
         [
           dbVehicleId,
@@ -131,42 +131,17 @@ export async function POST(request: NextRequest) {
 
       try {
         const customerEmailText = remainingAmount > 0
-          ? `Hi ${customerName}, thank you for your booking request for ${matchedVehicle.name} on ${date}. Your 20% deposit of ${formatCurrency(depositAmount)} has been charged. Your remaining balance of ${formatCurrency(remainingAmount)} will be automatically charged 2 days before your booking date. You will receive a confirmation email once our team approves your booking. Thank you, ATX Boats and Buses`
-          : `Hi ${customerName}, thank you for your booking request for ${matchedVehicle.name} on ${date}. Your full payment of ${formatCurrency(depositAmount)} has been charged and will be refunded if your booking is not approved. You will receive a confirmation email once our team reviews your booking. Thank you, ATX Boats and Buses`;
+          ? `Hi ${customerName}, great news! Your booking for ${matchedVehicle.name} on ${date} from ${startTime} to ${endTime} has been approved. Your 20% deposit of ${formatCurrency(depositAmount)} has already been charged. Your remaining balance of ${formatCurrency(remainingAmount)} will be automatically charged to your card on file 2 days before your booking. We look forward to seeing you! Thank you, ATX Boats and Buses`
+          : `Hi ${customerName}, great news! Your booking for ${matchedVehicle.name} on ${date} from ${startTime} to ${endTime} has been approved and your payment of ${formatCurrency(depositAmount)} has been processed. We look forward to seeing you! Thank you, ATX Boats and Buses`;
 
         await getResend().emails.send({
           from: "ATX Boats and Buses <bookings@atxboatsandbuses.com>",
           to: customerEmail,
-          subject: "Booking Request Received — ATX Boats and Buses",
+          subject: "Booking Confirmed — ATX Boats and Buses",
           text: customerEmailText
         });
       } catch (error) {
-        console.error("Resend customer booking request email failed:", error);
-      }
-
-      try {
-        await getResend().emails.send({
-          from: "ATX Boats and Buses <bookings@atxboatsandbuses.com>",
-          to: "bookings@atxboatsandbuses.com", // TODO: Replace with real manager email
-          subject: `New Booking Request — ${matchedVehicle.name} on ${date}`,
-          text: [
-            "New booking request details:",
-            "",
-            `Vehicle: ${matchedVehicle.name}`,
-            `Date: ${endDate !== date ? `${date} to ${endDate}` : date}`,
-            `Time: ${startTime} - ${endTime}`,
-            `Guest count: ${guestCount}`,
-            `Customer name: ${customerName}`,
-            `Customer email: ${customerEmail}`,
-            `Customer phone: ${customerPhone}`,
-            `Notes: ${notes || "None"}`,
-            `Total amount: ${formatCurrency(session.amount_total ?? 0)}`,
-            "",
-            "Log in to the admin panel to approve or reject this booking."
-          ].join("\n")
-        });
-      } catch (error) {
-        console.error("Resend manager booking request email failed:", error);
+        console.error("Resend customer confirmation email failed:", error);
       }
     } catch (error) {
       if ((error as { code?: string }).code === "23505") {

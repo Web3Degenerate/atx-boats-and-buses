@@ -27,6 +27,10 @@ type CouponRow = {
   discount_percent: number;
 };
 
+type BannedEmailRow = {
+  id: string;
+};
+
 function toMinutes(time: string): number {
   const [hours, minutes] = time.split(":").map(Number);
   return hours * 60 + minutes;
@@ -52,6 +56,15 @@ export async function POST(request: NextRequest) {
 
     if (!vehicleId || !date || !startTime || !endTime || !guestCount || !customerName || !customerEmail || !customerPhone) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    const bannedEmailResult = await query<BannedEmailRow>(
+      "SELECT id FROM banned_emails WHERE LOWER(email) = LOWER($1) LIMIT 1",
+      [customerEmail]
+    );
+
+    if (bannedEmailResult.rows[0]) {
+      return NextResponse.json({ error: "banned" }, { status: 403 });
     }
 
     const vehicle = vehicles.find((item) => item.id === vehicleId);

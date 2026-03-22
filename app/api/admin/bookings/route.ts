@@ -29,7 +29,8 @@ export async function GET(request: NextRequest) {
     SELECT b.id, b.customer_name, b.customer_email, b.customer_phone, b.date, b.start_time, b.end_time, b.guest_count, b.notes, b.total_price, b.status, b.created_at, v.name as vehicle_name
     FROM bookings b
     JOIN vehicles v ON v.id = b.vehicle_id
-    ORDER BY b.date DESC, b.start_time DESC
+    WHERE b.date >= CURRENT_DATE
+    ORDER BY b.date ASC, b.start_time ASC
   `);
 
   return NextResponse.json(result.rows);

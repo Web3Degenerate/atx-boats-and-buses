@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import CalendarPicker from "@/components/booking/CalendarPicker";
 import TimeSlotGrid from "@/components/booking/TimeSlotGrid";
 import { TimeSlot, Vehicle } from "@/types";
@@ -71,6 +72,7 @@ function buildSlotsForDisplay(date: string, apiSlots: TimeSlot[], timeRange: str
 }
 
 export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps) {
+  const router = useRouter();
   const [pickupDate, setPickupDate] = useState("");
   const [guestCount, setGuestCount] = useState("");
   const [pickupTime, setPickupTime] = useState("");
@@ -399,6 +401,12 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
       });
 
       const data = (await response.json()) as { url?: string; error?: string };
+
+      if (data.error === "banned") {
+        router.push("/booking/banned");
+        setIsSubmitting(false);
+        return;
+      }
 
       if (!response.ok || !data.url) {
         setSubmitError(data.error || "Unable to start checkout. Please try again.");
