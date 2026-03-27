@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { query } from "@/lib/db";
 import { getResend } from "@/lib/resend";
+import { getEmailTemplate, renderTemplate } from "@/lib/email-templates";
 import { getBearerToken, validAdminTokens } from "@/lib/admin-auth";
 
 type BookingRow = {
@@ -80,6 +81,9 @@ export async function POST(request: NextRequest) {
   await query("UPDATE bookings SET status = 'cancelled' WHERE id = $1", [booking.id]);
 
   try {
+    const template = await getEmailTemplate(
+      refund ? "booking_cancelled_refund" : "booking_cancelled_no_refund"
+    );
     const reasonLine = reason ? ` Reason: ${reason}` : "";
     const customerEmailText = !refund
       ? `Hi ${booking.customer_name}, your booking for ${booking.vehicle_name} on ${booking.date} has been cancelled. Per our cancellation policy, the deposit is non-refundable. If you have questions, please contact us. Thank you, ATX Boats and Buses`
@@ -87,12 +91,32 @@ export async function POST(request: NextRequest) {
         ? `Hi ${booking.customer_name}, thank you for your interest in booking ${booking.vehicle_name} on ${booking.date}. Unfortunately, we are unable to accommodate this booking request. Your deposit of ${formatCurrency(booking.deposit_amount)} has been refunded.${reasonLine} If you have any questions, please don't hesitate to contact us. Thank you, ATX Boats and Buses`
         : `Hi ${booking.customer_name}, thank you for your interest in booking ${booking.vehicle_name} on ${booking.date}. Unfortunately, we are unable to accommodate this booking request. The hold on your payment has been released and you will not be charged.${reasonLine} If you have any questions, please don't hesitate to contact us. Thank you, ATX Boats and Buses`;
 
-    await getResend().emails.send({
-      from: "ATX Boats and Buses <bookings@atxboatsandbuses.com>",
-      to: booking.customer_email,
-      subject: "Booking Update — ATX Boats and Buses",
-      text: customerEmailText
-    });
+    if (template) {
+      const renderedHtml = renderTemplate(template.html_body, {
+        customerName: booking.customer_name,
+        vehicleName: booking.vehicle_name || "",
+        date: booking.date,
+        startTime: booking.start_time,
+        endTime: booking.end_time,
+        depositAmount: formatCurrency(booking.deposit_amount),
+        remainingAmount: "",
+        totalAmount: formatCurrency(booking.total_price)
+      });
+
+      await getResend().emails.send({
+        from: "ATX Boats and Buses <bookings@atxboatsandbuses.com>",
+        to: booking.customer_email,
+        subject: template.subject,
+        html: renderedHtml
+      });
+    } else {
+      await getResend().emails.send({
+        from: "ATX Boats and Buses <bookings@atxboatsandbuses.com>",
+        to: booking.customer_email,
+        subject: "Booking Update — ATX Boats and Buses",
+        text: customerEmailText
+      });
+    }
   } catch (error) {
     console.error("Resend rejection email failed:", error);
   }

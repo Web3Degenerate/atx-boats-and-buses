@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { vehicles } from "@/data/vehicles";
 import { query } from "@/lib/db";
 import { getResend } from "@/lib/resend";
+import { getEmailTemplate, renderTemplate } from "@/lib/email-templates";
 import { stripe } from "@/lib/stripe";
 
 type VehicleRow = {
@@ -130,16 +131,39 @@ export async function POST(request: NextRequest) {
       );
 
       try {
+        const template = await getEmailTemplate(
+          remainingAmount > 0 ? "booking_confirmed_deposit" : "booking_confirmed_full"
+        );
         const customerEmailText = remainingAmount > 0
           ? `Hi ${customerName}, great news! Your booking for ${matchedVehicle.name} on ${date} from ${startTime} to ${endTime} has been approved. Your 20% deposit of ${formatCurrency(depositAmount)} has already been charged. Your remaining balance of ${formatCurrency(remainingAmount)} will be automatically charged to your card on file 2 days before your booking. We look forward to seeing you! Thank you, ATX Boats and Buses`
           : `Hi ${customerName}, great news! Your booking for ${matchedVehicle.name} on ${date} from ${startTime} to ${endTime} has been approved and your payment of ${formatCurrency(depositAmount)} has been processed. We look forward to seeing you! Thank you, ATX Boats and Buses`;
 
-        await getResend().emails.send({
-          from: "ATX Boats and Buses <bookings@atxboatsandbuses.com>",
-          to: customerEmail,
-          subject: "Booking Confirmed — ATX Boats and Buses",
-          text: customerEmailText
-        });
+        if (template) {
+          const renderedHtml = renderTemplate(template.html_body, {
+            customerName,
+            vehicleName: matchedVehicle.name,
+            date,
+            startTime,
+            endTime,
+            depositAmount: formatCurrency(depositAmount),
+            remainingAmount: formatCurrency(remainingAmount),
+            totalAmount: formatCurrency(depositAmount + remainingAmount)
+          });
+
+          await getResend().emails.send({
+            from: "ATX Boats and Buses <bookings@atxboatsandbuses.com>",
+            to: customerEmail,
+            subject: template.subject,
+            html: renderedHtml
+          });
+        } else {
+          await getResend().emails.send({
+            from: "ATX Boats and Buses <bookings@atxboatsandbuses.com>",
+            to: customerEmail,
+            subject: "Booking Confirmed — ATX Boats and Buses",
+            text: customerEmailText
+          });
+        }
       } catch (error) {
         console.error("Resend customer confirmation email failed:", error);
       }

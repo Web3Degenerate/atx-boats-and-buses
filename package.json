@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@tinymce/tinymce-react": "^6.3.0",
     "date-fns": "^3.6.0",
     "lucide-react": "^0.575.0",
     "motion": "^12.38.0",
