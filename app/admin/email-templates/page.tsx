@@ -131,7 +131,7 @@ export default function AdminEmailTemplatesPage() {
               <Editor
                 apiKey={process.env.NEXT_PUBLIC_TINYMCE_API_KEE}
                 value={template.html_body}
-                onEditorChange={(value) => updateTemplate(template.id, "html_body", value)}
+                onEditorChange={(value: string) => updateTemplate(template.id, "html_body", value)}
                 init={{
                   height: 360,
                   menubar: false,
