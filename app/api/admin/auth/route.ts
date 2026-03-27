@@ -1,6 +1,5 @@
-import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { getBearerToken, validAdminTokens } from "@/lib/admin-auth";
+import { getBearerToken, generateAdminToken, verifyAdminToken } from "@/lib/admin-auth";
 
 export async function POST(request: NextRequest) {
   const { password } = (await request.json()) as { password?: string };
@@ -14,16 +13,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid password" }, { status: 401 });
   }
 
-  const token = randomUUID().replace(/-/g, "");
-  validAdminTokens.add(token);
-
+  const token = generateAdminToken();
   return NextResponse.json({ token });
 }
 
 export async function GET(request: NextRequest) {
   const token = getBearerToken(request);
 
-  if (!token || !validAdminTokens.has(token)) {
+  if (!token || !verifyAdminToken(token)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

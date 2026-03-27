@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { getBearerToken, validAdminTokens } from "@/lib/admin-auth";
+import { getBearerToken, verifyAdminToken } from "@/lib/admin-auth";
 
 type PricingRow = {
   id: string;
@@ -14,7 +14,7 @@ type PricingRow = {
 
 function isAuthorized(request: NextRequest): boolean {
   const token = getBearerToken(request);
-  return Boolean(token && validAdminTokens.has(token));
+  return Boolean(token && verifyAdminToken(token));
 }
 
 export async function GET(request: NextRequest) {

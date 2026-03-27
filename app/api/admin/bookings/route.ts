@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { getBearerToken, validAdminTokens } from "@/lib/admin-auth";
+import { getBearerToken, verifyAdminToken } from "@/lib/admin-auth";
 
 type BookingRow = {
   id: string;
@@ -21,7 +21,7 @@ type BookingRow = {
 export async function GET(request: NextRequest) {
   const token = getBearerToken(request);
 
-  if (!token || !validAdminTokens.has(token)) {
+  if (!token || !verifyAdminToken(token)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

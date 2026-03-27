@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { query } from "@/lib/db";
 import { getResend } from "@/lib/resend";
-import { getBearerToken, validAdminTokens } from "@/lib/admin-auth";
+import { getBearerToken, verifyAdminToken } from "@/lib/admin-auth";
 
 type BookingRow = {
   id: string;
@@ -26,7 +26,7 @@ function formatCurrency(cents: number): string {
 
 export async function POST(request: NextRequest) {
   const token = getBearerToken(request);
-  if (!token || !validAdminTokens.has(token)) {
+  if (!token || !verifyAdminToken(token)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
