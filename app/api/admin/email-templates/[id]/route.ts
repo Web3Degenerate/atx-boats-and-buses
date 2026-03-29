@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { getBearerToken, verifyAdminToken } from "@/lib/admin-auth";
-
-function isAuthorized(request: NextRequest): boolean {
-  const token = getBearerToken(request);
-  return Boolean(token && verifyAdminToken(token));
-}
+import { isAdminAuthorized } from "@/lib/admin-auth";
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  if (!isAuthorized(request)) {
+  if (!(await isAdminAuthorized())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

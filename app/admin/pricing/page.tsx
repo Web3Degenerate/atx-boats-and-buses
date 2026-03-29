@@ -32,21 +32,9 @@ export default function AdminPricingPage() {
 
   useEffect(() => {
     async function fetchPricing() {
-      const token = window.localStorage.getItem("admin_token");
-
-      if (!token) {
-        router.replace("/admin/login");
-        return;
-      }
-
-      const response = await fetch("/api/admin/pricing", {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const response = await fetch("/api/admin/pricing");
 
       if (response.status === 401) {
-        window.localStorage.removeItem("admin_token");
         router.replace("/admin/login");
         return;
       }
@@ -102,19 +90,12 @@ export default function AdminPricingPage() {
   }
 
   async function saveVehicle(vehicle: EditableVehiclePricing) {
-    const token = window.localStorage.getItem("admin_token");
-    if (!token) {
-      router.replace("/admin/login");
-      return;
-    }
-
     setSavingId(vehicle.id);
 
     const response = await fetch("/api/admin/pricing", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         vehicleId: vehicle.id,
@@ -126,7 +107,6 @@ export default function AdminPricingPage() {
     });
 
     if (response.status === 401) {
-      window.localStorage.removeItem("admin_token");
       router.replace("/admin/login");
       return;
     }

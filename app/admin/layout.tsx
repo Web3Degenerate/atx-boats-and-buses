@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { ReactNode } from "react";
+import { signOut } from "next-auth/react";
 import AdminGuard from "@/components/admin/AdminGuard";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -27,6 +30,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <Link href="/admin/blocked" className="text-slate-700 hover:text-primary">
               Blocked Dates
             </Link>
+            <button onClick={() => signOut({ callbackUrl: "/admin/login" })} className="text-slate-700 hover:text-primary">
+              Sign Out
+            </button>
           </nav>
         </div>
       </header>

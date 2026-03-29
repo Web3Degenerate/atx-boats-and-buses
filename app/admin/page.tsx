@@ -27,21 +27,9 @@ export default function AdminBookingsPage() {
   const [actionBookingId, setActionBookingId] = useState<string | null>(null);
 
   async function fetchBookings() {
-    const token = window.localStorage.getItem("admin_token");
-
-    if (!token) {
-      router.replace("/admin/login");
-      return;
-    }
-
-    const response = await fetch("/api/admin/bookings", {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
+    const response = await fetch("/api/admin/bookings");
 
     if (response.status === 401) {
-      window.localStorage.removeItem("admin_token");
       router.replace("/admin/login");
       return;
     }
@@ -56,12 +44,6 @@ export default function AdminBookingsPage() {
   }, [router]);
 
   async function handleCancel(bookingId: string, refund: boolean) {
-    const token = window.localStorage.getItem("admin_token");
-    if (!token) {
-      router.replace("/admin/login");
-      return;
-    }
-
     const confirmed = refund
       ? window.confirm("This will cancel the booking and refund the customer. Continue?")
       : window.confirm("This will cancel the booking with no refund. Continue?");
@@ -75,14 +57,12 @@ export default function AdminBookingsPage() {
       const response = await fetch("/api/admin/bookings/reject", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({ bookingId, refund })
       });
 
       if (response.status === 401) {
-        window.localStorage.removeItem("admin_token");
         router.replace("/admin/login");
         return;
       }

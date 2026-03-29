@@ -46,28 +46,12 @@ export default function AdminBlockedDatesPage() {
 
   useEffect(() => {
     async function loadData() {
-      const token = window.localStorage.getItem("admin_token");
-
-      if (!token) {
-        router.replace("/admin/login");
-        return;
-      }
-
       const [blockedResponse, vehiclesResponse] = await Promise.all([
-        fetch("/api/admin/blocked", {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }),
-        fetch("/api/admin/pricing", {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        })
+        fetch("/api/admin/blocked"),
+        fetch("/api/admin/pricing")
       ]);
 
       if (blockedResponse.status === 401 || vehiclesResponse.status === 401) {
-        window.localStorage.removeItem("admin_token");
         router.replace("/admin/login");
         return;
       }
@@ -87,20 +71,9 @@ export default function AdminBlockedDatesPage() {
   }, [router]);
 
   async function refreshBlockedDates() {
-    const token = window.localStorage.getItem("admin_token");
-    if (!token) {
-      router.replace("/admin/login");
-      return;
-    }
-
-    const response = await fetch("/api/admin/blocked", {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
+    const response = await fetch("/api/admin/blocked");
 
     if (response.status === 401) {
-      window.localStorage.removeItem("admin_token");
       router.replace("/admin/login");
       return;
     }
@@ -111,17 +84,10 @@ export default function AdminBlockedDatesPage() {
 
   async function handleAdd(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const token = window.localStorage.getItem("admin_token");
-    if (!token) {
-      router.replace("/admin/login");
-      return;
-    }
-
     await fetch("/api/admin/blocked", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         vehicleId,
@@ -140,17 +106,10 @@ export default function AdminBlockedDatesPage() {
   }
 
   async function handleRemove(id: string) {
-    const token = window.localStorage.getItem("admin_token");
-    if (!token) {
-      router.replace("/admin/login");
-      return;
-    }
-
     await fetch("/api/admin/blocked", {
       method: "DELETE",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({ id })
     });

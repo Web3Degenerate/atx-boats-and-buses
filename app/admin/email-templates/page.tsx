@@ -36,21 +36,9 @@ export default function AdminEmailTemplatesPage() {
   const [savedId, setSavedId] = useState<string | null>(null);
 
   async function fetchTemplates() {
-    const token = window.localStorage.getItem("admin_token");
-
-    if (!token) {
-      router.replace("/admin/login");
-      return;
-    }
-
-    const response = await fetch("/api/admin/email-templates", {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
+    const response = await fetch("/api/admin/email-templates");
 
     if (response.status === 401) {
-      window.localStorage.removeItem("admin_token");
       router.replace("/admin/login");
       return;
     }
@@ -69,20 +57,12 @@ export default function AdminEmailTemplatesPage() {
   }
 
   async function handleSave(template: EmailTemplateRow) {
-    const token = window.localStorage.getItem("admin_token");
-
-    if (!token) {
-      router.replace("/admin/login");
-      return;
-    }
-
     setSavingId(template.id);
 
     const response = await fetch(`/api/admin/email-templates/${template.id}`, {
       method: "PUT",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         subject: template.subject,
@@ -91,7 +71,6 @@ export default function AdminEmailTemplatesPage() {
     });
 
     if (response.status === 401) {
-      window.localStorage.removeItem("admin_token");
       router.replace("/admin/login");
       return;
     }

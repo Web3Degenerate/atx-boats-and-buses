@@ -23,21 +23,9 @@ export default function AdminCouponsPage() {
   const [loading, setLoading] = useState(true);
 
   async function fetchCoupons() {
-    const token = window.localStorage.getItem("admin_token");
-
-    if (!token) {
-      router.replace("/admin/login");
-      return;
-    }
-
-    const response = await fetch("/api/admin/coupons", {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
+    const response = await fetch("/api/admin/coupons");
 
     if (response.status === 401) {
-      window.localStorage.removeItem("admin_token");
       router.replace("/admin/login");
       return;
     }
@@ -53,18 +41,11 @@ export default function AdminCouponsPage() {
 
   async function handleCreateCoupon(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const token = window.localStorage.getItem("admin_token");
-
-    if (!token) {
-      router.replace("/admin/login");
-      return;
-    }
 
     await fetch("/api/admin/coupons", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         code,
@@ -82,18 +63,10 @@ export default function AdminCouponsPage() {
   }
 
   async function handleToggleCoupon(coupon: CouponRow) {
-    const token = window.localStorage.getItem("admin_token");
-
-    if (!token) {
-      router.replace("/admin/login");
-      return;
-    }
-
     await fetch(`/api/admin/coupons/${coupon.id}`, {
       method: "PATCH",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({ active: !coupon.active })
     });
@@ -102,18 +75,8 @@ export default function AdminCouponsPage() {
   }
 
   async function handleDeleteCoupon(id: string) {
-    const token = window.localStorage.getItem("admin_token");
-
-    if (!token) {
-      router.replace("/admin/login");
-      return;
-    }
-
     await fetch(`/api/admin/coupons/${id}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+      method: "DELETE"
     });
 
     await fetchCoupons();

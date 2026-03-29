@@ -18,21 +18,9 @@ export default function AdminBannedPage() {
   const [loading, setLoading] = useState(true);
 
   async function fetchBannedEmails() {
-    const token = window.localStorage.getItem("admin_token");
-
-    if (!token) {
-      router.replace("/admin/login");
-      return;
-    }
-
-    const response = await fetch("/api/admin/banned", {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
+    const response = await fetch("/api/admin/banned");
 
     if (response.status === 401) {
-      window.localStorage.removeItem("admin_token");
       router.replace("/admin/login");
       return;
     }
@@ -48,18 +36,11 @@ export default function AdminBannedPage() {
 
   async function handleBanEmail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const token = window.localStorage.getItem("admin_token");
-
-    if (!token) {
-      router.replace("/admin/login");
-      return;
-    }
 
     await fetch("/api/admin/banned", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({ email, reason })
     });
@@ -70,18 +51,8 @@ export default function AdminBannedPage() {
   }
 
   async function handleAllowEmail(id: string) {
-    const token = window.localStorage.getItem("admin_token");
-
-    if (!token) {
-      router.replace("/admin/login");
-      return;
-    }
-
     await fetch(`/api/admin/banned/${id}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+      method: "DELETE"
     });
 
     await fetchBannedEmails();

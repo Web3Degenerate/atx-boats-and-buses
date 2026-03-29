@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { getBearerToken, verifyAdminToken } from "@/lib/admin-auth";
+import { isAdminAuthorized } from "@/lib/admin-auth";
 
 type BannedEmailRow = {
   id: string;
@@ -9,13 +9,8 @@ type BannedEmailRow = {
   created_at: string;
 };
 
-function isAuthorized(request: NextRequest): boolean {
-  const token = getBearerToken(request);
-  return Boolean(token && verifyAdminToken(token));
-}
-
 export async function GET(request: NextRequest) {
-  if (!isAuthorized(request)) {
+  if (!(await isAdminAuthorized())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -31,7 +26,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!isAuthorized(request)) {
+  if (!(await isAdminAuthorized())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
