@@ -61,12 +61,11 @@ export default function ContactForm() {
         <div className="mt-6 rounded-xl border border-white/10 bg-neutral-900 p-5">
           <h2 className="text-lg font-semibold text-white">Call Us</h2>
           <p className="mt-1 text-sm text-neutral-400">Speak with our team directly for fast booking help.</p>
-          {/* TODO: Replace with real business phone number */}
           <a
-            href="tel:+15125550199"
+            href="tel:+15127103801"
             className="mt-4 inline-flex w-full items-center justify-center rounded-md bg-white px-5 py-4 text-lg font-semibold text-black transition hover:bg-neutral-200"
           >
-            (512) 555-0199
+            (512) 710-3801
           </a>
         </div>
 
