@@ -108,7 +108,7 @@ export default function AdminEmailTemplatesPage() {
             <div className="space-y-1">
               <span className="text-sm text-slate-700">HTML Body</span>
               <Editor
-                apiKey={process.env.NEXT_PUBLIC_TINYMCE_API_KEE}
+                apiKey={process.env.NEXT_PUBLIC_TINYMCE_API_KEY}
                 value={template.html_body}
                 onEditorChange={(value: string) => updateTemplate(template.id, "html_body", value)}
                 init={{
