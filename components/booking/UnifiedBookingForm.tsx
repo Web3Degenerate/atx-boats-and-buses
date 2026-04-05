@@ -177,6 +177,7 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
   const basePrice = selectedHours * vehicle.pricePerHour;
   const fuelCharge = basePrice * (vehicle.fuelChargePercent / 100);
   const totalPrice = basePrice + fuelCharge;
+  const optionalChargeLabel = vehicle.optionalChargeLabel || "Fuel Charge";
   const discountedTotal = appliedCoupon
     ? Math.round(totalPrice * (1 - appliedCoupon.discountPercent / 100))
     : totalPrice;
@@ -562,7 +563,7 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
             <div className="mt-2 space-y-1 text-sm text-neutral-300">
               <p>Hours: {selectedHours || 0}</p>
               <p>Base: {formatCurrency(basePrice)}</p>
-              {vehicle.fuelChargePercent > 0 && <p>Fuel Charge: {formatCurrency(fuelCharge)}</p>}
+              {vehicle.fuelChargePercent > 0 && <p>{optionalChargeLabel}: {formatCurrency(fuelCharge)}</p>}
               {appliedCoupon && (
                 <p className="text-emerald-400">
                   Discount (-{appliedCoupon.discountPercent}%): -{formatCurrency(discountAmount)}

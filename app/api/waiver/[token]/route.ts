@@ -6,6 +6,7 @@ type WaiverLookupRow = {
   booking_id: string;
   token: string;
   vehicle_type: string;
+  vehicle_name: string;
   guest_count: number;
   trip_date: string;
   template_body: string;
@@ -33,6 +34,7 @@ export async function GET(
         wl.booking_id,
         wl.token,
         wl.vehicle_type,
+        v.name AS vehicle_name,
         wl.guest_count,
         wl.trip_date,
         wt.body AS template_body,
@@ -45,6 +47,7 @@ export async function GET(
         b.status AS booking_status
       FROM waiver_links wl
       JOIN bookings b ON b.id = wl.booking_id
+      JOIN vehicles v ON v.id = b.vehicle_id
       JOIN waiver_templates wt ON wt.vehicle_type = wl.vehicle_type
       WHERE wl.token = $1
       LIMIT 1
@@ -74,7 +77,8 @@ export async function GET(
       startTime: waiver.start_time,
       endTime: waiver.end_time,
       status: waiver.booking_status,
-      vehicleType: waiver.vehicle_type
+      vehicleType: waiver.vehicle_type,
+      vehicleName: waiver.vehicle_name
     },
     guest_count: waiver.guest_count,
     signed_count: Number(signedCountResult.rows[0]?.count || 0)

@@ -16,6 +16,7 @@ type VehicleRow = {
   minimum_hours: number;
   maximum_hours: number;
   fuel_charge_percent: number;
+  optional_charge_label: string;
   features: string[] | string;
   images: string[] | string;
 };
@@ -35,7 +36,7 @@ function parseJsonArray(value: string[] | string): string[] {
 
 export async function GET() {
   const result = await query<VehicleRow>(
-    "SELECT id, name, slug, type, description, capacity, price_per_hour, minimum_hours, maximum_hours, fuel_charge_percent, features, images FROM vehicles ORDER BY name"
+    "SELECT id, name, slug, type, description, capacity, price_per_hour, minimum_hours, maximum_hours, fuel_charge_percent, optional_charge_label, features, images FROM vehicles ORDER BY name"
   );
 
   const vehicles: Vehicle[] = result.rows.map((row) => {
@@ -52,6 +53,7 @@ export async function GET() {
       minimumHours: row.minimum_hours,
       maximumHours: row.maximum_hours,
       fuelChargePercent: row.fuel_charge_percent,
+      optionalChargeLabel: row.optional_charge_label || staticVehicle?.optionalChargeLabel || "Fuel Charge",
       features: parseJsonArray(row.features),
       images: parseJsonArray(row.images)
     };

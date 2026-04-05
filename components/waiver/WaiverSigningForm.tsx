@@ -17,6 +17,7 @@ type WaiverSigningFormProps = {
       endTime: string;
       status: string;
       vehicleType: string;
+      vehicleName: string;
     };
     guest_count: number;
     signed_count: number;
@@ -102,6 +103,23 @@ const initialMinorValues: MinorFormValues = {
   state: "",
   zip: ""
 };
+
+function formatTripDate(dateStr: string): string {
+  const date = new Date(`${dateStr.split("T")[0]}T12:00:00`);
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric"
+  });
+}
+
+function formatTime(timeStr: string): string {
+  const [hours, minutes] = timeStr.split(":").map(Number);
+  const hour12 = hours % 12 || 12;
+  const suffix = hours >= 12 ? "PM" : "AM";
+  return `${hour12}:${String(minutes).padStart(2, "0")} ${suffix}`;
+}
 
 function calculateAge(dateOfBirth: string): number {
   const today = new Date();
@@ -333,10 +351,10 @@ export default function WaiverSigningForm({ token, waiver }: WaiverSigningFormPr
           <p className="text-sm font-medium uppercase tracking-[0.3em] text-amber-400">ATX Boats and Buses</p>
           <h1 className="mt-3 text-3xl font-bold text-white sm:text-4xl">Reservation Waiver</h1>
           <div className="mt-4 grid gap-3 rounded-2xl border border-white/10 bg-neutral-950/60 p-4 text-sm text-neutral-300 sm:grid-cols-2">
-            <p><span className="text-neutral-500">Trip Date:</span> {waiver.booking.date}</p>
-            <p><span className="text-neutral-500">Time:</span> {waiver.booking.startTime} - {waiver.booking.endTime}</p>
+            <p><span className="text-neutral-500">Trip Date:</span> {formatTripDate(waiver.booking.date)}</p>
+            <p><span className="text-neutral-500">Time:</span> {formatTime(waiver.booking.startTime)} - {formatTime(waiver.booking.endTime)}</p>
             <p><span className="text-neutral-500">Primary Guest:</span> {waiver.booking.customerName}</p>
-            <p><span className="text-neutral-500">Vehicle Type:</span> {waiver.booking.vehicleType}</p>
+            <p><span className="text-neutral-500">Vehicle:</span> {waiver.booking.vehicleName}</p>
           </div>
         </section>
 
@@ -385,13 +403,6 @@ export default function WaiverSigningForm({ token, waiver }: WaiverSigningFormPr
               <p className="mt-2 text-sm text-emerald-200">
                 A PDF copy has been sent to your email.
               </p>
-              <button
-                type="button"
-                onClick={resetForm}
-                className="mt-5 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-neutral-200"
-              >
-                Another guest needs to sign?
-              </button>
             </div>
           ) : signerMode === "guardian" ? (
             <form onSubmit={handleSubmit} className="mt-6 space-y-6">

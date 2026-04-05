@@ -19,6 +19,7 @@ type WaiverData = {
     endTime: string;
     status: string;
     vehicleType: string;
+    vehicleName: string;
   };
   guest_count: number;
   signed_count: number;

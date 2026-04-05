@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS vehicles (
   minimum_hours INTEGER NOT NULL,
   maximum_hours INTEGER NOT NULL DEFAULT 48,
   fuel_charge_percent INTEGER NOT NULL DEFAULT 0,
+  optional_charge_label TEXT NOT NULL DEFAULT 'Fuel Charge',
   features JSON NOT NULL,
   images JSON NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -37,8 +38,11 @@ CREATE TABLE IF NOT EXISTS bookings (
   notes TEXT,
   total_price INTEGER NOT NULL,
   status booking_status NOT NULL DEFAULT 'pending',
+  deposit_amount INTEGER NOT NULL DEFAULT 0,
+  remaining_amount INTEGER NOT NULL DEFAULT 0,
   stripe_session_id TEXT UNIQUE,
   stripe_payment_intent_id TEXT,
+  stripe_customer_id TEXT DEFAULT '',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -68,6 +72,7 @@ INSERT INTO vehicles (
   minimum_hours,
   maximum_hours,
   fuel_charge_percent,
+  optional_charge_label,
   features,
   images
 )
@@ -82,6 +87,7 @@ VALUES
     3,
     48,
     20,
+    'Fuel Charge',
     '["Private Bathroom", "23 Guest Capacity", "Premium Sound System", "LED Party Lighting", "Climate Controlled"]'::json,
     '["/images/bus-1.jpg", "/images/bus-2.jpg"]'::json
   ),
@@ -95,6 +101,7 @@ VALUES
     3,
     48,
     20,
+    'Fuel Charge',
     '["Private Bathroom", "25 Guest Capacity", "Comfortable Seating", "Climate Controlled"]'::json,
     '["/images/bus-3.jpg", "/images/bus-4.jpg"]'::json
   ),
@@ -108,6 +115,7 @@ VALUES
     3,
     4,
     0,
+    'Fuel Charge',
     '["20 Guest Capacity", "Full Sun Deck", "Premium Sound System", "Swim Platform"]'::json,
     '["/images/boat-1.jpg", "/images/boat-2.jpg"]'::json
   ),
@@ -121,6 +129,7 @@ VALUES
     3,
     4,
     0,
+    'Fuel Charge',
     '["20 Guest Capacity", "Open Deck Layout", "Bluetooth Audio", "Swim Platform"]'::json,
     '["/images/boat-3.jpg", "/images/boat-4.jpg"]'::json
   )

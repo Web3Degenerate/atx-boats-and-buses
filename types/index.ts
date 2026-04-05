@@ -11,6 +11,7 @@ export interface Vehicle {
   minimumHours: number;
   maximumHours: number;
   fuelChargePercent: number;
+  optionalChargeLabel: string;
 }
 
 export interface Booking {

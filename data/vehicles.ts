@@ -20,7 +20,8 @@ export const vehicles: Vehicle[] = [
     ],
     minimumHours: 3,
     maximumHours: 48,
-    fuelChargePercent: 20
+    fuelChargePercent: 20,
+    optionalChargeLabel: "Fuel Charge"
   },
   {
     id: "v2",
@@ -35,7 +36,8 @@ export const vehicles: Vehicle[] = [
     features: ["Private Bathroom", "25 Guest Capacity", "Comfortable Seating", "Climate Controlled"],
     minimumHours: 3,
     maximumHours: 48,
-    fuelChargePercent: 20
+    fuelChargePercent: 20,
+    optionalChargeLabel: "Fuel Charge"
   },
   {
     id: "v3",
@@ -50,7 +52,8 @@ export const vehicles: Vehicle[] = [
     features: ["20 Guest Capacity", "Full Sun Deck", "Premium Sound System", "Swim Platform"],
     minimumHours: 3,
     maximumHours: 4,
-    fuelChargePercent: 0
+    fuelChargePercent: 0,
+    optionalChargeLabel: "Fuel Charge"
   },
   {
     id: "v4",
@@ -65,6 +68,7 @@ export const vehicles: Vehicle[] = [
     features: ["20 Guest Capacity", "Open Deck Layout", "Bluetooth Audio", "Swim Platform"],
     minimumHours: 3,
     maximumHours: 4,
-    fuelChargePercent: 0
+    fuelChargePercent: 0,
+    optionalChargeLabel: "Fuel Charge"
   }
 ];

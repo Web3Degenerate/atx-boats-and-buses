@@ -223,6 +223,7 @@ export default function BusBookingForm({ vehicle }: BusBookingFormProps) {
   const basePrice = selectedHours * vehicle.pricePerHour;
   const fuelCharge = basePrice * (vehicle.fuelChargePercent / 100);
   const totalPrice = basePrice + fuelCharge;
+  const optionalChargeLabel = vehicle.optionalChargeLabel || "Fuel Charge";
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -396,7 +397,7 @@ export default function BusBookingForm({ vehicle }: BusBookingFormProps) {
         <div className="mt-2 space-y-1 text-sm text-slate-700">
           <p>Hours: {selectedHours || 0}</p>
           <p>Base: ${basePrice.toFixed(2)}</p>
-          {vehicle.fuelChargePercent > 0 && <p>Fuel Charge: ${fuelCharge.toFixed(2)}</p>}
+          {vehicle.fuelChargePercent > 0 && <p>{optionalChargeLabel}: ${fuelCharge.toFixed(2)}</p>}
           <p className="pt-1 text-base font-semibold text-slate-900">Total: ${totalPrice.toFixed(2)}</p>
         </div>
       </div>

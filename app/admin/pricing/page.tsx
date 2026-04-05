@@ -11,6 +11,7 @@ type VehiclePricing = {
   minimum_hours: number;
   maximum_hours: number;
   fuel_charge_percent: number;
+  optional_charge_label: string;
 };
 
 type EditableVehiclePricing = {
@@ -22,6 +23,7 @@ type EditableVehiclePricing = {
   maximumHours: string;
   fuelChargePercent: string;
   previousFuelChargePercent: string;
+  optionalChargeLabel: string;
 };
 
 export default function AdminPricingPage() {
@@ -49,7 +51,8 @@ export default function AdminPricingPage() {
           minimumHours: String(vehicle.minimum_hours),
           maximumHours: String(vehicle.maximum_hours),
           fuelChargePercent: String(vehicle.fuel_charge_percent),
-          previousFuelChargePercent: vehicle.fuel_charge_percent > 0 ? String(vehicle.fuel_charge_percent) : ""
+          previousFuelChargePercent: vehicle.fuel_charge_percent > 0 ? String(vehicle.fuel_charge_percent) : "",
+          optionalChargeLabel: vehicle.optional_charge_label || "Fuel Charge"
         }))
       );
       setLoading(false);
@@ -102,7 +105,8 @@ export default function AdminPricingPage() {
         pricePerHour: Math.round(Number(vehicle.pricePerHourDollars || 0) * 100),
         minimumHours: Number(vehicle.minimumHours || 0),
         maximumHours: Number(vehicle.maximumHours || 0),
-        fuelChargePercent: Number(vehicle.fuelChargePercent || 0)
+        fuelChargePercent: Number(vehicle.fuelChargePercent || 0),
+        optionalChargeLabel: vehicle.optionalChargeLabel
       })
     });
 
@@ -123,7 +127,7 @@ export default function AdminPricingPage() {
       {vehicles.map((vehicle) => (
         <div key={vehicle.id} className="rounded-lg border border-slate-200 bg-white p-4">
           <h2 className="text-lg font-semibold text-primary">{vehicle.name}</h2>
-          <div className="mt-3 grid gap-3 md:grid-cols-4">
+          <div className="mt-3 grid gap-3 md:grid-cols-5">
             <label className="space-y-1">
               <span className="text-sm text-slate-700">Price/Hour (USD)</span>
               <input
@@ -160,10 +164,10 @@ export default function AdminPricingPage() {
                   onChange={(event) => toggleFuelCharge(vehicle.id, event.target.checked)}
                   className="h-4 w-4 rounded border-slate-300"
                 />
-                <span className="text-sm text-slate-700">Fuel Charge Enabled</span>
+                <span className="text-sm text-slate-700">Optional Charge Enabled</span>
               </label>
               <label className="space-y-1">
-                <span className="text-sm text-slate-700">Fuel Charge %</span>
+                <span className="text-sm text-slate-700">Optional Charge %</span>
                 <input
                   type="number"
                   value={vehicle.fuelChargePercent}
@@ -173,6 +177,15 @@ export default function AdminPricingPage() {
                 />
               </label>
             </div>
+            <label className="space-y-1">
+              <span className="text-sm text-slate-700">Optional Charge Label</span>
+              <input
+                type="text"
+                value={vehicle.optionalChargeLabel}
+                onChange={(event) => updateVehicle(vehicle.id, "optionalChargeLabel", event.target.value)}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-black"
+              />
+            </label>
           </div>
           <button
             onClick={() => saveVehicle(vehicle)}
