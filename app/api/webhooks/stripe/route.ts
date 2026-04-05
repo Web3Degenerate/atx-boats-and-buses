@@ -5,8 +5,13 @@ import { query } from "@/lib/db";
 import { getResend } from "@/lib/resend";
 import { getEmailTemplate, renderTemplate } from "@/lib/email-templates";
 import { stripe } from "@/lib/stripe";
+import { createWaiverLink } from "@/lib/waiver";
 
 type VehicleRow = {
+  id: string;
+};
+
+type InsertedBookingRow = {
   id: string;
 };
 
@@ -89,7 +94,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      await query(
+      const bookingInsertResult = await query<InsertedBookingRow>(
         `
           INSERT INTO bookings (
             vehicle_id,
@@ -110,6 +115,7 @@ export async function POST(request: NextRequest) {
             stripe_customer_id
           )
           VALUES ($1, $2, $3, $4, $5::date, $6::time, $7::time, $8, $9, $10, $11, $12, 'confirmed', $13, $14, $15)
+          RETURNING id
         `,
         [
           dbVehicleId,
@@ -129,6 +135,13 @@ export async function POST(request: NextRequest) {
           stripeCustomerId
         ]
       );
+
+      const bookingId = bookingInsertResult.rows[0]?.id;
+      if (!bookingId) {
+        throw new Error("Booking insert did not return an id");
+      }
+
+      const waiverLink = await createWaiverLink(bookingId, matchedVehicle.type, guestCount, date);
 
       try {
         const template = await getEmailTemplate(
@@ -150,18 +163,20 @@ export async function POST(request: NextRequest) {
             totalAmount: formatCurrency(depositAmount + remainingAmount)
           });
 
+          const confirmationHtml = `${renderedHtml}<p style="margin-top:16px;">Complete your waiver here: <a href="${waiverLink}">${waiverLink}</a></p>`;
+
           await getResend().emails.send({
             from: "ATX Boats and Buses <bookings@atxboatsandbuses.com>",
             to: customerEmail,
             subject: template.subject,
-            html: renderedHtml
+            html: confirmationHtml
           });
         } else {
           await getResend().emails.send({
             from: "ATX Boats and Buses <bookings@atxboatsandbuses.com>",
             to: customerEmail,
             subject: "Booking Confirmed — ATX Boats and Buses",
-            text: customerEmailText
+            text: `${customerEmailText}\n\nComplete your waiver here: ${waiverLink}`
           });
         }
       } catch (error) {
