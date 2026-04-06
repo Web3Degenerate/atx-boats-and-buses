@@ -58,6 +58,16 @@ const EXECUTIVE_SHUTTLE_IMAGES = [
   "/images/36-foot-slider-images/IMG_1968-card.webp",
 ];
 
+const COBALT_IMAGES = [
+  "/images/cobalt-boat/cobalt1.png",
+  "/images/cobalt-boat/cobalt2.jpg",
+  "/images/cobalt-boat/cobalt3.jpeg",
+  "/images/cobalt-boat/cobalt4.jpeg",
+  "/images/cobalt-boat/cobalt5.jpeg",
+  "/images/cobalt-boat/cobalt6.jpeg",
+  "/images/cobalt-boat/cobalt7.jpeg",
+];
+
 export default function VehicleDetailPage() {
   const params = useParams<{ slug: string }>();
   const slug = params?.slug;
@@ -127,6 +137,8 @@ export default function VehicleDetailPage() {
               ? PREVOST_IMAGES
               : vehicle.slug === "executive-shuttle"
                 ? EXECUTIVE_SHUTTLE_IMAGES
+                : vehicle.slug === "cobalt-boat"
+                  ? COBALT_IMAGES
                 : vehicle.images
           }
           alt={vehicle.name}

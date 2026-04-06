@@ -57,17 +57,17 @@ export const vehicles: Vehicle[] = [
   },
   {
     id: "v4",
-    name: "38 Foot Cruiser Yacht",
-    slug: "cruiser-yacht",
+    name: "22 Foot Cobalt Boat",
+    slug: "cobalt-boat",
     type: "party-boat",
     description:
-      "Our 38-foot Cruiser Yacht is perfect for intimate gatherings of up to 20 guests on Lake Travis. Great for sunset cruises, birthday parties, and corporate outings.",
-    capacity: 20,
+      "Our 22-foot Cobalt Boat is perfect for intimate outings on Lake Austin with up to 10 guests. Known for its deep-V hull design that delivers a smooth, stable ride, ideal for cruising, celebrations, and watersports.",
+    capacity: 10,
     pricePerHour: 350,
-    images: ["/images/boat-1.jpg", "/images/boat-2.jpg"],
-    features: ["20 Guest Capacity", "Open Deck Layout", "Bluetooth Audio", "Swim Platform"],
-    minimumHours: 3,
-    maximumHours: 4,
+    images: ["/images/cobalt-boat/cobalt1.png", "/images/cobalt-boat/cobalt2.jpg"],
+    features: ["10 Guest Capacity", "Deep-V Hull Design", "Smooth Stable Ride", "Swim Platform", "Bluetooth Audio"],
+    minimumHours: 4,
+    maximumHours: 6,
     fuelChargePercent: 0,
     optionalChargeLabel: "Fuel Charge"
   }
