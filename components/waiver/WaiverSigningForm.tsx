@@ -20,6 +20,7 @@ type WaiverSigningFormProps = {
       vehicleName: string;
     };
     guest_count: number;
+    vehicle_capacity: number;
     signed_count: number;
   };
 };
@@ -39,13 +40,30 @@ type AdultFormValues = {
   esign_consent: boolean;
 };
 
-type GuardianFormValues = Omit<AdultFormValues, "date_of_birth">;
+type GuardianFormValues = {
+  first_name: string;
+  last_name: string;
+  middle_name: string;
+  email: string;
+  phone: string;
+  date_of_birth: string;
+  address_line1: string;
+  address_line2: string;
+  city: string;
+  state: string;
+  zip: string;
+  esign_consent: boolean;
+};
 
 type MinorFormValues = {
   first_name: string;
   last_name: string;
   middle_name: string;
   date_of_birth: string;
+  phone: string;
+};
+
+type MinorAddress = {
   address_line1: string;
   address_line2: string;
   city: string;
@@ -62,6 +80,13 @@ const US_STATES = [
   "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
   "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"
 ];
+
+const ORDINAL_NAMES = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth", "Eleventh", "Twelfth", "Thirteenth", "Fourteenth", "Fifteenth", "Sixteenth", "Seventeenth", "Eighteenth", "Nineteenth", "Twentieth", "Twenty-First", "Twenty-Second", "Twenty-Third", "Twenty-Fourth", "Twenty-Fifth"];
+
+function getMinorLabel(index: number, total: number): string {
+  if (total === 1) return "Minor";
+  return (ORDINAL_NAMES[index] ?? `#${index + 1}`) + " Minor";
+}
 
 const initialFormValues: AdultFormValues = {
   first_name: "",
@@ -84,6 +109,7 @@ const initialGuardianValues: GuardianFormValues = {
   middle_name: "",
   email: "",
   phone: "",
+  date_of_birth: "",
   address_line1: "",
   address_line2: "",
   city: "",
@@ -97,6 +123,10 @@ const initialMinorValues: MinorFormValues = {
   last_name: "",
   middle_name: "",
   date_of_birth: "",
+  phone: ""
+};
+
+const initialMinorAddress: MinorAddress = {
   address_line1: "",
   address_line2: "",
   city: "",
@@ -136,12 +166,14 @@ function calculateAge(dateOfBirth: string): number {
 
 export default function WaiverSigningForm({ token, waiver }: WaiverSigningFormProps) {
   const signatureRef = useRef<SignatureCanvas | null>(null);
-  const [signerMode, setSignerMode] = useState<"adult" | "guardian">("adult");
+  const [signerMode, setSignerMode] = useState<"unselected" | "adult" | "guardian">("unselected");
+  const [adultFormRevealed, setAdultFormRevealed] = useState(false);
   const [values, setValues] = useState<AdultFormValues>(initialFormValues);
   const [guardianValues, setGuardianValues] = useState<GuardianFormValues>(initialGuardianValues);
-  const [minorCount, setMinorCount] = useState(1);
-  const [minorValues, setMinorValues] = useState<MinorFormValues[]>([initialMinorValues]);
-  const [expandedMinors, setExpandedMinors] = useState<number[]>([0]);
+  const [minorCount, setMinorCount] = useState(0);
+  const [minorValues, setMinorValues] = useState<MinorFormValues[]>([]);
+  const [expandedMinors, setExpandedMinors] = useState<number[]>([]);
+  const [minorAddress, setMinorAddress] = useState<MinorAddress>(initialMinorAddress);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -153,8 +185,22 @@ export default function WaiverSigningForm({ token, waiver }: WaiverSigningFormPr
     [submittedCount, waiver.guest_count]
   );
 
+  function clearSignature() {
+    signatureRef.current?.clear();
+    setErrors((current) => {
+      const next = { ...current };
+      delete next.signature_data;
+      return next;
+    });
+  }
+
   function handleSignerModeChange(mode: "adult" | "guardian") {
     setSignerMode(mode);
+    setAdultFormRevealed(false);
+    setMinorCount(0);
+    setMinorValues([]);
+    setExpandedMinors([]);
+    setMinorAddress(initialMinorAddress);
     setErrors({});
     setSubmitError("");
     setIsSubmitted(false);
@@ -190,37 +236,19 @@ export default function WaiverSigningForm({ token, waiver }: WaiverSigningFormPr
     });
   }
 
-  function handleMinorCountChange(count: number) {
-    setMinorCount(count);
-    setMinorValues((current) => {
-      if (count > current.length) {
-        return [...current, ...Array.from({ length: count - current.length }, () => ({ ...initialMinorValues }))];
-      }
-      return current.slice(0, count);
-    });
-    setExpandedMinors(Array.from({ length: count }, (_, index) => index));
-  }
-
-  function clearSignature() {
-    signatureRef.current?.clear();
+  function updateMinorAddress(key: keyof MinorAddress, value: string) {
+    setMinorAddress((current) => ({ ...current, [key]: value }));
     setErrors((current) => {
       const next = { ...current };
-      delete next.signature_data;
+      delete next[`minorAddress.${key}`];
       return next;
     });
   }
 
-  function resetForm() {
-    setValues(initialFormValues);
-    setGuardianValues(initialGuardianValues);
-    setMinorCount(1);
-    setMinorValues([{ ...initialMinorValues }]);
-    setExpandedMinors([0]);
-    setErrors({});
-    setSubmitError("");
-    setIsSubmitted(false);
-    clearSignature();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  function handleMinorCountChange(count: number) {
+    setMinorCount(count);
+    setMinorValues(Array.from({ length: count }, () => ({ ...initialMinorValues })));
+    setExpandedMinors(Array.from({ length: count }, (_, index) => index));
   }
 
   function validate(): FormErrors {
@@ -254,6 +282,11 @@ export default function WaiverSigningForm({ token, waiver }: WaiverSigningFormPr
     if (!guardianValues.last_name.trim()) nextErrors["guardian.last_name"] = "Last name is required.";
     if (!guardianValues.email.trim()) nextErrors["guardian.email"] = "Email is required.";
     if (!guardianValues.phone.trim()) nextErrors["guardian.phone"] = "Phone is required.";
+    if (!guardianValues.date_of_birth) {
+      nextErrors["guardian.date_of_birth"] = "Date of birth is required.";
+    } else if (calculateAge(guardianValues.date_of_birth) < 18) {
+      nextErrors["guardian.date_of_birth"] = "Guardian must be at least 18 years old.";
+    }
     if (!guardianValues.address_line1.trim()) nextErrors["guardian.address_line1"] = "Address line 1 is required.";
     if (!guardianValues.city.trim()) nextErrors["guardian.city"] = "City is required.";
     if (!guardianValues.state) nextErrors["guardian.state"] = "State is required.";
@@ -265,16 +298,18 @@ export default function WaiverSigningForm({ token, waiver }: WaiverSigningFormPr
     minorValues.slice(0, minorCount).forEach((minor, index) => {
       if (!minor.first_name.trim()) nextErrors[`minor.${index}.first_name`] = "First name is required.";
       if (!minor.last_name.trim()) nextErrors[`minor.${index}.last_name`] = "Last name is required.";
+      if (!minor.phone.trim()) nextErrors[`minor.${index}.phone`] = "Phone is required.";
       if (!minor.date_of_birth) {
         nextErrors[`minor.${index}.date_of_birth`] = "Date of birth is required.";
       } else if (calculateAge(minor.date_of_birth) >= 18) {
         nextErrors[`minor.${index}.date_of_birth`] = "Minor must be under 18 years old.";
       }
-      if (!minor.address_line1.trim()) nextErrors[`minor.${index}.address_line1`] = "Address line 1 is required.";
-      if (!minor.city.trim()) nextErrors[`minor.${index}.city`] = "City is required.";
-      if (!minor.state) nextErrors[`minor.${index}.state`] = "State is required.";
-      if (!minor.zip.trim()) nextErrors[`minor.${index}.zip`] = "ZIP is required.";
     });
+
+    if (!minorAddress.address_line1.trim()) nextErrors["minorAddress.address_line1"] = "Address line 1 is required.";
+    if (!minorAddress.city.trim()) nextErrors["minorAddress.city"] = "City is required.";
+    if (!minorAddress.state) nextErrors["minorAddress.state"] = "State is required.";
+    if (!minorAddress.zip.trim()) nextErrors["minorAddress.zip"] = "ZIP is required.";
 
     if (!signatureRef.current || signatureRef.current.isEmpty()) {
       nextErrors.signature_data = "Signature is required.";
@@ -319,8 +354,16 @@ export default function WaiverSigningForm({ token, waiver }: WaiverSigningFormPr
                 token,
                 signer_type: "guardian",
                 ...guardianValues,
+                date_of_birth: guardianValues.date_of_birth,
                 signature_data: signatureData,
-                minors: minorValues.slice(0, minorCount)
+                minors: minorValues.slice(0, minorCount).map((minor) => ({
+                  ...minor,
+                  address_line1: minorAddress.address_line1,
+                  address_line2: minorAddress.address_line2,
+                  city: minorAddress.city,
+                  state: minorAddress.state,
+                  zip: minorAddress.zip
+                }))
               }
         )
       });
@@ -372,6 +415,10 @@ export default function WaiverSigningForm({ token, waiver }: WaiverSigningFormPr
         </section>
 
         <section className="rounded-3xl border border-white/10 bg-neutral-900 p-6">
+          <p className="mb-6 text-center text-xl font-bold text-white">
+            Please select who will be participating
+          </p>
+
           <div className="grid gap-3 sm:grid-cols-2">
             <button
               type="button"
@@ -400,328 +447,21 @@ export default function WaiverSigningForm({ token, waiver }: WaiverSigningFormPr
           {isSubmitted ? (
             <div className="mt-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center">
               <h3 className="text-xl font-semibold text-white">Waiver signed successfully!</h3>
-              <p className="mt-2 text-sm text-emerald-200">
-                A PDF copy has been sent to your email.
-              </p>
+              <p className="mt-2 text-sm text-emerald-200">A PDF copy has been sent to your email.</p>
             </div>
-          ) : signerMode === "guardian" ? (
-            <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-              <div className="rounded-2xl border border-white/10 bg-neutral-950/40 p-5">
-                <label className="space-y-2">
-                  <span className="text-sm font-medium text-neutral-200">How many minors are you signing for?</span>
-                  <select
-                    value={minorCount}
-                    onChange={(event) => handleMinorCountChange(Number(event.target.value))}
-                    className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400 sm:w-56"
-                  >
-                    {Array.from({ length: 10 }, (_, index) => index + 1).map((count) => (
-                      <option key={count} value={count}>
-                        {count}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
-              <div className="space-y-4">
-                {minorValues.slice(0, minorCount).map((minor, index) => {
-                  const isExpanded = expandedMinors.includes(index);
-
-                  return (
-                    <div key={index} className="rounded-2xl border border-white/10 bg-neutral-950/40">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setExpandedMinors((current) =>
-                            current.includes(index) ? current.filter((value) => value !== index) : [...current, index]
-                          )
-                        }
-                        className="flex w-full items-center justify-between px-5 py-4 text-left"
-                      >
-                        <span className="text-base font-semibold text-white">Minor #{index + 1}</span>
-                        <span className="text-sm text-amber-300">{isExpanded ? "Collapse" : "Expand"}</span>
-                      </button>
-
-                      {isExpanded && (
-                        <div className="space-y-5 border-t border-white/10 px-5 py-5">
-                          <div className="grid gap-4 md:grid-cols-3">
-                            <label className="space-y-2">
-                              <span className="text-sm font-medium text-neutral-200">First Name</span>
-                              <input
-                                type="text"
-                                value={minor.first_name}
-                                onChange={(event) => updateMinorValue(index, "first_name", event.target.value)}
-                                className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
-                              />
-                              {errors[`minor.${index}.first_name`] && <p className="text-sm text-red-400">{errors[`minor.${index}.first_name`]}</p>}
-                            </label>
-                            <label className="space-y-2">
-                              <span className="text-sm font-medium text-neutral-200">Last Name</span>
-                              <input
-                                type="text"
-                                value={minor.last_name}
-                                onChange={(event) => updateMinorValue(index, "last_name", event.target.value)}
-                                className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
-                              />
-                              {errors[`minor.${index}.last_name`] && <p className="text-sm text-red-400">{errors[`minor.${index}.last_name`]}</p>}
-                            </label>
-                            <label className="space-y-2">
-                              <span className="text-sm font-medium text-neutral-200">Middle Name</span>
-                              <input
-                                type="text"
-                                value={minor.middle_name}
-                                onChange={(event) => updateMinorValue(index, "middle_name", event.target.value)}
-                                className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
-                              />
-                            </label>
-                          </div>
-
-                          <label className="space-y-2 md:max-w-xs">
-                            <span className="text-sm font-medium text-neutral-200">Date of Birth</span>
-                            <input
-                              type="date"
-                              value={minor.date_of_birth}
-                              onChange={(event) => updateMinorValue(index, "date_of_birth", event.target.value)}
-                              className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
-                            />
-                            {errors[`minor.${index}.date_of_birth`] && <p className="text-sm text-red-400">{errors[`minor.${index}.date_of_birth`]}</p>}
-                          </label>
-
-                          <div className="grid gap-4 md:grid-cols-2">
-                            <label className="space-y-2 md:col-span-2">
-                              <span className="text-sm font-medium text-neutral-200">Address Line 1</span>
-                              <input
-                                type="text"
-                                value={minor.address_line1}
-                                onChange={(event) => updateMinorValue(index, "address_line1", event.target.value)}
-                                className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
-                              />
-                              {errors[`minor.${index}.address_line1`] && <p className="text-sm text-red-400">{errors[`minor.${index}.address_line1`]}</p>}
-                            </label>
-                            <label className="space-y-2 md:col-span-2">
-                              <span className="text-sm font-medium text-neutral-200">Address Line 2</span>
-                              <input
-                                type="text"
-                                value={minor.address_line2}
-                                onChange={(event) => updateMinorValue(index, "address_line2", event.target.value)}
-                                className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
-                              />
-                            </label>
-                            <label className="space-y-2">
-                              <span className="text-sm font-medium text-neutral-200">City</span>
-                              <input
-                                type="text"
-                                value={minor.city}
-                                onChange={(event) => updateMinorValue(index, "city", event.target.value)}
-                                className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
-                              />
-                              {errors[`minor.${index}.city`] && <p className="text-sm text-red-400">{errors[`minor.${index}.city`]}</p>}
-                            </label>
-                            <label className="space-y-2">
-                              <span className="text-sm font-medium text-neutral-200">State</span>
-                              <select
-                                value={minor.state}
-                                onChange={(event) => updateMinorValue(index, "state", event.target.value)}
-                                className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
-                              >
-                                <option value="">Select state</option>
-                                {US_STATES.map((state) => (
-                                  <option key={state} value={state}>
-                                    {state}
-                                  </option>
-                                ))}
-                              </select>
-                              {errors[`minor.${index}.state`] && <p className="text-sm text-red-400">{errors[`minor.${index}.state`]}</p>}
-                            </label>
-                            <label className="space-y-2">
-                              <span className="text-sm font-medium text-neutral-200">ZIP</span>
-                              <input
-                                type="text"
-                                value={minor.zip}
-                                onChange={(event) => updateMinorValue(index, "zip", event.target.value)}
-                                className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
-                              />
-                              {errors[`minor.${index}.zip`] && <p className="text-sm text-red-400">{errors[`minor.${index}.zip`]}</p>}
-                            </label>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-neutral-950/40 p-5">
-                <h3 className="text-xl font-semibold text-white">Parent/Guardian Information</h3>
-                <div className="mt-5 space-y-6">
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <label className="space-y-2">
-                      <span className="text-sm font-medium text-neutral-200">First Name</span>
-                      <input
-                        type="text"
-                        value={guardianValues.first_name}
-                        onChange={(event) => updateGuardianValue("first_name", event.target.value)}
-                        className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
-                      />
-                      {errors["guardian.first_name"] && <p className="text-sm text-red-400">{errors["guardian.first_name"]}</p>}
-                    </label>
-                    <label className="space-y-2">
-                      <span className="text-sm font-medium text-neutral-200">Last Name</span>
-                      <input
-                        type="text"
-                        value={guardianValues.last_name}
-                        onChange={(event) => updateGuardianValue("last_name", event.target.value)}
-                        className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
-                      />
-                      {errors["guardian.last_name"] && <p className="text-sm text-red-400">{errors["guardian.last_name"]}</p>}
-                    </label>
-                    <label className="space-y-2">
-                      <span className="text-sm font-medium text-neutral-200">Middle Name</span>
-                      <input
-                        type="text"
-                        value={guardianValues.middle_name}
-                        onChange={(event) => updateGuardianValue("middle_name", event.target.value)}
-                        className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
-                      />
-                    </label>
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <label className="space-y-2">
-                      <span className="text-sm font-medium text-neutral-200">Email</span>
-                      <input
-                        type="email"
-                        value={guardianValues.email}
-                        onChange={(event) => updateGuardianValue("email", event.target.value)}
-                        className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
-                      />
-                      {errors["guardian.email"] && <p className="text-sm text-red-400">{errors["guardian.email"]}</p>}
-                    </label>
-                    <label className="space-y-2">
-                      <span className="text-sm font-medium text-neutral-200">Phone</span>
-                      <input
-                        type="tel"
-                        value={guardianValues.phone}
-                        onChange={(event) => updateGuardianValue("phone", event.target.value)}
-                        className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
-                      />
-                      {errors["guardian.phone"] && <p className="text-sm text-red-400">{errors["guardian.phone"]}</p>}
-                    </label>
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <label className="space-y-2 md:col-span-2">
-                      <span className="text-sm font-medium text-neutral-200">Address Line 1</span>
-                      <input
-                        type="text"
-                        value={guardianValues.address_line1}
-                        onChange={(event) => updateGuardianValue("address_line1", event.target.value)}
-                        className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
-                      />
-                      {errors["guardian.address_line1"] && <p className="text-sm text-red-400">{errors["guardian.address_line1"]}</p>}
-                    </label>
-                    <label className="space-y-2 md:col-span-2">
-                      <span className="text-sm font-medium text-neutral-200">Address Line 2</span>
-                      <input
-                        type="text"
-                        value={guardianValues.address_line2}
-                        onChange={(event) => updateGuardianValue("address_line2", event.target.value)}
-                        className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
-                      />
-                    </label>
-                    <label className="space-y-2">
-                      <span className="text-sm font-medium text-neutral-200">City</span>
-                      <input
-                        type="text"
-                        value={guardianValues.city}
-                        onChange={(event) => updateGuardianValue("city", event.target.value)}
-                        className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
-                      />
-                      {errors["guardian.city"] && <p className="text-sm text-red-400">{errors["guardian.city"]}</p>}
-                    </label>
-                    <label className="space-y-2">
-                      <span className="text-sm font-medium text-neutral-200">State</span>
-                      <select
-                        value={guardianValues.state}
-                        onChange={(event) => updateGuardianValue("state", event.target.value)}
-                        className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
-                      >
-                        <option value="">Select state</option>
-                        {US_STATES.map((state) => (
-                          <option key={state} value={state}>
-                            {state}
-                          </option>
-                        ))}
-                      </select>
-                      {errors["guardian.state"] && <p className="text-sm text-red-400">{errors["guardian.state"]}</p>}
-                    </label>
-                    <label className="space-y-2">
-                      <span className="text-sm font-medium text-neutral-200">ZIP</span>
-                      <input
-                        type="text"
-                        value={guardianValues.zip}
-                        onChange={(event) => updateGuardianValue("zip", event.target.value)}
-                        className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
-                      />
-                      {errors["guardian.zip"] && <p className="text-sm text-red-400">{errors["guardian.zip"]}</p>}
-                    </label>
-                  </div>
-
-                  <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-neutral-950/40 p-4">
-                    <input
-                      type="checkbox"
-                      checked={guardianValues.esign_consent}
-                      onChange={(event) => updateGuardianValue("esign_consent", event.target.checked)}
-                      className="mt-1 h-4 w-4 rounded border-white/20 bg-neutral-900 text-amber-400 focus:ring-amber-400"
-                    />
-                    <span className="text-sm text-neutral-300">
-                      By checking this box, I agree that my electronic signature is the legal equivalent of my handwritten signature and that I am the legal parent or guardian of the minor(s) listed above.
-                    </span>
-                  </label>
-                  {errors["guardian.esign_consent"] && <p className="text-sm text-red-400">{errors["guardian.esign_consent"]}</p>}
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-sm font-medium text-neutral-200">Signature</h3>
-                  <button
-                    type="button"
-                    onClick={clearSignature}
-                    className="rounded-lg border border-white/10 bg-neutral-800 px-3 py-2 text-xs font-semibold text-neutral-200 transition hover:border-amber-400/40 hover:text-white"
-                  >
-                    Clear Signature
-                  </button>
-                </div>
-                <div className="overflow-hidden rounded-2xl border border-white/10 bg-white">
-                  <SignatureCanvas
-                    ref={(instance) => {
-                      signatureRef.current = instance;
-                    }}
-                    penColor="#111111"
-                    canvasProps={{
-                      className: "h-56 w-full min-w-[300px]"
-                    }}
-                  />
-                </div>
-                {errors.signature_data && <p className="text-sm text-red-400">{errors.signature_data}</p>}
-              </div>
-
-              {submitError && (
-                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-                  {submitError}
-                </div>
-              )}
-
+          ) : signerMode === "adult" && !adultFormRevealed ? (
+            <div className="mt-6 space-y-3 rounded-2xl border border-amber-400/20 bg-neutral-950/60 p-8 text-center">
+              <p className="text-2xl font-bold text-white">This Agreement is just for YOU</p>
+              <p className="font-semibold text-white">Every adult passenger must complete their own waiver form</p>
               <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full rounded-2xl bg-amber-400 px-5 py-4 text-sm font-semibold text-black transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-70"
+                type="button"
+                onClick={() => setAdultFormRevealed(true)}
+                className="mt-4 w-full rounded-2xl bg-amber-400 px-5 py-4 text-base font-semibold text-black transition hover:bg-amber-300"
               >
-                {isSubmitting ? "Submitting..." : "Submit Waiver"}
+                Continue
               </button>
-            </form>
-          ) : (
+            </div>
+          ) : signerMode === "adult" && adultFormRevealed ? (
             <form onSubmit={handleSubmit} className="mt-6 space-y-6">
               <div className="grid gap-4 md:grid-cols-3">
                 <label className="space-y-2">
@@ -898,7 +638,368 @@ export default function WaiverSigningForm({ token, waiver }: WaiverSigningFormPr
                 {isSubmitting ? "Submitting..." : "Submit Waiver"}
               </button>
             </form>
-          )}
+          ) : signerMode === "guardian" ? (
+            <div className="mt-6 space-y-6">
+              <div className="rounded-2xl border border-white/10 bg-neutral-950/40 p-5">
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-neutral-200">
+                    How many minors are you signing for?
+                  </span>
+                  <select
+                    value={minorCount === 0 ? "" : String(minorCount)}
+                    onChange={(event) => {
+                      const val = event.target.value;
+                      if (val) handleMinorCountChange(Number(val));
+                      else {
+                        setMinorCount(0);
+                        setMinorValues([]);
+                        setExpandedMinors([]);
+                      }
+                    }}
+                    className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400 sm:w-56"
+                  >
+                    <option value="">Select number of minors</option>
+                    {Array.from({ length: waiver.vehicle_capacity }, (_, index) => index + 1).map((count) => (
+                      <option key={count} value={count}>{count}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              {minorCount > 0 && (
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="space-y-4">
+                    {minorValues.slice(0, minorCount).map((minor, index) => {
+                      const isExpanded = expandedMinors.includes(index);
+                      const cardLabel = getMinorLabel(index, minorCount);
+
+                      return (
+                        <div key={index} className="rounded-2xl border border-white/10 bg-neutral-950/40">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedMinors((current) =>
+                                current.includes(index)
+                                  ? current.filter((v) => v !== index)
+                                  : [...current, index]
+                              )
+                            }
+                            className="flex w-full items-center justify-between px-5 py-4 text-left"
+                          >
+                            <span className="text-base font-semibold text-white">{cardLabel}</span>
+                            <span className="text-sm text-amber-300">{isExpanded ? "Collapse" : "Expand"}</span>
+                          </button>
+                          {isExpanded && (
+                            <div className="space-y-5 border-t border-white/10 px-5 py-5">
+                              <div className="grid gap-4 md:grid-cols-3">
+                                <label className="space-y-2">
+                                  <span className="text-sm font-medium text-neutral-200">First Name</span>
+                                  <input
+                                    type="text"
+                                    value={minor.first_name}
+                                    onChange={(event) => updateMinorValue(index, "first_name", event.target.value)}
+                                    className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
+                                  />
+                                  {errors[`minor.${index}.first_name`] && <p className="text-sm text-red-400">{errors[`minor.${index}.first_name`]}</p>}
+                                </label>
+                                <label className="space-y-2">
+                                  <span className="text-sm font-medium text-neutral-200">Last Name</span>
+                                  <input
+                                    type="text"
+                                    value={minor.last_name}
+                                    onChange={(event) => updateMinorValue(index, "last_name", event.target.value)}
+                                    className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
+                                  />
+                                  {errors[`minor.${index}.last_name`] && <p className="text-sm text-red-400">{errors[`minor.${index}.last_name`]}</p>}
+                                </label>
+                                <label className="space-y-2">
+                                  <span className="text-sm font-medium text-neutral-200">Middle Name</span>
+                                  <input
+                                    type="text"
+                                    value={minor.middle_name}
+                                    onChange={(event) => updateMinorValue(index, "middle_name", event.target.value)}
+                                    className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
+                                  />
+                                </label>
+                              </div>
+                              <div className="grid gap-4 md:grid-cols-2">
+                                <label className="space-y-2">
+                                  <span className="text-sm font-medium text-neutral-200">Phone</span>
+                                  <input
+                                    type="tel"
+                                    value={minor.phone}
+                                    onChange={(event) => updateMinorValue(index, "phone", event.target.value)}
+                                    className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
+                                  />
+                                  {errors[`minor.${index}.phone`] && <p className="text-sm text-red-400">{errors[`minor.${index}.phone`]}</p>}
+                                </label>
+                                <label className="space-y-2">
+                                  <span className="text-sm font-medium text-neutral-200">Date of Birth</span>
+                                  <input
+                                    type="date"
+                                    value={minor.date_of_birth}
+                                    onChange={(event) => updateMinorValue(index, "date_of_birth", event.target.value)}
+                                    className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
+                                  />
+                                  {errors[`minor.${index}.date_of_birth`] && <p className="text-sm text-red-400">{errors[`minor.${index}.date_of_birth`]}</p>}
+                                </label>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-neutral-950/40 p-5">
+                    <h3 className="text-xl font-semibold text-white">
+                      {minorCount === 1 ? "Minor's Address" : "Minors' Address"}
+                    </h3>
+                    <div className="mt-5 grid gap-4 md:grid-cols-2">
+                      <label className="space-y-2 md:col-span-2">
+                        <span className="text-sm font-medium text-neutral-200">Address Line 1</span>
+                        <input
+                          type="text"
+                          value={minorAddress.address_line1}
+                          onChange={(event) => updateMinorAddress("address_line1", event.target.value)}
+                          className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
+                        />
+                        {errors["minorAddress.address_line1"] && <p className="text-sm text-red-400">{errors["minorAddress.address_line1"]}</p>}
+                      </label>
+                      <label className="space-y-2 md:col-span-2">
+                        <span className="text-sm font-medium text-neutral-200">Address Line 2</span>
+                        <input
+                          type="text"
+                          value={minorAddress.address_line2}
+                          onChange={(event) => updateMinorAddress("address_line2", event.target.value)}
+                          className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
+                        />
+                      </label>
+                      <label className="space-y-2">
+                        <span className="text-sm font-medium text-neutral-200">City</span>
+                        <input
+                          type="text"
+                          value={minorAddress.city}
+                          onChange={(event) => updateMinorAddress("city", event.target.value)}
+                          className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
+                        />
+                        {errors["minorAddress.city"] && <p className="text-sm text-red-400">{errors["minorAddress.city"]}</p>}
+                      </label>
+                      <label className="space-y-2">
+                        <span className="text-sm font-medium text-neutral-200">State</span>
+                        <select
+                          value={minorAddress.state}
+                          onChange={(event) => updateMinorAddress("state", event.target.value)}
+                          className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
+                        >
+                          <option value="">Select state</option>
+                          {US_STATES.map((state) => (
+                            <option key={state} value={state}>
+                              {state}
+                            </option>
+                          ))}
+                        </select>
+                        {errors["minorAddress.state"] && <p className="text-sm text-red-400">{errors["minorAddress.state"]}</p>}
+                      </label>
+                      <label className="space-y-2">
+                        <span className="text-sm font-medium text-neutral-200">ZIP</span>
+                        <input
+                          type="text"
+                          value={minorAddress.zip}
+                          onChange={(event) => updateMinorAddress("zip", event.target.value)}
+                          className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
+                        />
+                        {errors["minorAddress.zip"] && <p className="text-sm text-red-400">{errors["minorAddress.zip"]}</p>}
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-neutral-950/40 p-5">
+                    <h3 className="text-xl font-semibold text-white">Parent/Guardian Information</h3>
+                    <div className="mt-5 space-y-6">
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <label className="space-y-2">
+                          <span className="text-sm font-medium text-neutral-200">First Name</span>
+                          <input
+                            type="text"
+                            value={guardianValues.first_name}
+                            onChange={(event) => updateGuardianValue("first_name", event.target.value)}
+                            className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
+                          />
+                          {errors["guardian.first_name"] && <p className="text-sm text-red-400">{errors["guardian.first_name"]}</p>}
+                        </label>
+                        <label className="space-y-2">
+                          <span className="text-sm font-medium text-neutral-200">Last Name</span>
+                          <input
+                            type="text"
+                            value={guardianValues.last_name}
+                            onChange={(event) => updateGuardianValue("last_name", event.target.value)}
+                            className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
+                          />
+                          {errors["guardian.last_name"] && <p className="text-sm text-red-400">{errors["guardian.last_name"]}</p>}
+                        </label>
+                        <label className="space-y-2">
+                          <span className="text-sm font-medium text-neutral-200">Middle Name</span>
+                          <input
+                            type="text"
+                            value={guardianValues.middle_name}
+                            onChange={(event) => updateGuardianValue("middle_name", event.target.value)}
+                            className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
+                          />
+                        </label>
+                      </div>
+
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <label className="space-y-2">
+                          <span className="text-sm font-medium text-neutral-200">Email</span>
+                          <input
+                            type="email"
+                            value={guardianValues.email}
+                            onChange={(event) => updateGuardianValue("email", event.target.value)}
+                            className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
+                          />
+                          {errors["guardian.email"] && <p className="text-sm text-red-400">{errors["guardian.email"]}</p>}
+                        </label>
+                        <label className="space-y-2">
+                          <span className="text-sm font-medium text-neutral-200">Phone</span>
+                          <input
+                            type="tel"
+                            value={guardianValues.phone}
+                            onChange={(event) => updateGuardianValue("phone", event.target.value)}
+                            className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
+                          />
+                          {errors["guardian.phone"] && <p className="text-sm text-red-400">{errors["guardian.phone"]}</p>}
+                        </label>
+                      </div>
+
+                      <label className="block space-y-2 md:max-w-xs">
+                        <span className="text-sm font-medium text-neutral-200">Date of Birth</span>
+                        <input
+                          type="date"
+                          value={guardianValues.date_of_birth}
+                          onChange={(event) => updateGuardianValue("date_of_birth", event.target.value)}
+                          className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
+                        />
+                        {errors["guardian.date_of_birth"] && (
+                          <p className="text-sm text-red-400">{errors["guardian.date_of_birth"]}</p>
+                        )}
+                      </label>
+
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <label className="space-y-2 md:col-span-2">
+                          <span className="text-sm font-medium text-neutral-200">Address Line 1</span>
+                          <input
+                            type="text"
+                            value={guardianValues.address_line1}
+                            onChange={(event) => updateGuardianValue("address_line1", event.target.value)}
+                            className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
+                          />
+                          {errors["guardian.address_line1"] && <p className="text-sm text-red-400">{errors["guardian.address_line1"]}</p>}
+                        </label>
+                        <label className="space-y-2 md:col-span-2">
+                          <span className="text-sm font-medium text-neutral-200">Address Line 2</span>
+                          <input
+                            type="text"
+                            value={guardianValues.address_line2}
+                            onChange={(event) => updateGuardianValue("address_line2", event.target.value)}
+                            className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
+                          />
+                        </label>
+                        <label className="space-y-2">
+                          <span className="text-sm font-medium text-neutral-200">City</span>
+                          <input
+                            type="text"
+                            value={guardianValues.city}
+                            onChange={(event) => updateGuardianValue("city", event.target.value)}
+                            className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
+                          />
+                          {errors["guardian.city"] && <p className="text-sm text-red-400">{errors["guardian.city"]}</p>}
+                        </label>
+                        <label className="space-y-2">
+                          <span className="text-sm font-medium text-neutral-200">State</span>
+                          <select
+                            value={guardianValues.state}
+                            onChange={(event) => updateGuardianValue("state", event.target.value)}
+                            className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
+                          >
+                            <option value="">Select state</option>
+                            {US_STATES.map((state) => (
+                              <option key={state} value={state}>
+                                {state}
+                              </option>
+                            ))}
+                          </select>
+                          {errors["guardian.state"] && <p className="text-sm text-red-400">{errors["guardian.state"]}</p>}
+                        </label>
+                        <label className="space-y-2">
+                          <span className="text-sm font-medium text-neutral-200">ZIP</span>
+                          <input
+                            type="text"
+                            value={guardianValues.zip}
+                            onChange={(event) => updateGuardianValue("zip", event.target.value)}
+                            className="w-full rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-white outline-none transition focus:border-amber-400"
+                          />
+                          {errors["guardian.zip"] && <p className="text-sm text-red-400">{errors["guardian.zip"]}</p>}
+                        </label>
+                      </div>
+
+                      <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-neutral-950/40 p-4">
+                        <input
+                          type="checkbox"
+                          checked={guardianValues.esign_consent}
+                          onChange={(event) => updateGuardianValue("esign_consent", event.target.checked)}
+                          className="mt-1 h-4 w-4 rounded border-white/20 bg-neutral-900 text-amber-400 focus:ring-amber-400"
+                        />
+                        <span className="text-sm text-neutral-300">
+                          By checking this box, I agree that my electronic signature is the legal equivalent of my handwritten signature and that I am the legal parent or guardian of the minor(s) listed above.
+                        </span>
+                      </label>
+                      {errors["guardian.esign_consent"] && <p className="text-sm text-red-400">{errors["guardian.esign_consent"]}</p>}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="text-sm font-medium text-neutral-200">Signature</h3>
+                      <button
+                        type="button"
+                        onClick={clearSignature}
+                        className="rounded-lg border border-white/10 bg-neutral-800 px-3 py-2 text-xs font-semibold text-neutral-200 transition hover:border-amber-400/40 hover:text-white"
+                      >
+                        Clear Signature
+                      </button>
+                    </div>
+                    <div className="overflow-hidden rounded-2xl border border-white/10 bg-white">
+                      <SignatureCanvas
+                        ref={(instance) => {
+                          signatureRef.current = instance;
+                        }}
+                        penColor="#111111"
+                        canvasProps={{
+                          className: "h-56 w-full min-w-[300px]"
+                        }}
+                      />
+                    </div>
+                    {errors.signature_data && <p className="text-sm text-red-400">{errors.signature_data}</p>}
+                  </div>
+
+                  {submitError && (
+                    <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                      {submitError}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full rounded-2xl bg-amber-400 px-5 py-4 text-sm font-semibold text-black transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {isSubmitting ? "Submitting..." : "Submit Waiver"}
+                  </button>
+                </form>
+              )}
+            </div>
+          ) : null}
         </section>
       </div>
     </main>

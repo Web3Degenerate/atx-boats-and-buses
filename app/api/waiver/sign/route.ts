@@ -10,6 +10,7 @@ type MinorInput = {
   last_name?: string;
   middle_name?: string;
   date_of_birth?: string;
+  phone?: string;
   address_line1?: string;
   address_line2?: string;
   city?: string;
@@ -69,6 +70,7 @@ function extractClientIp(request: NextRequest): string | null {
 function validateMinor(minor: MinorInput, index: number): string | null {
   if (!minor.first_name?.trim()) return `Minor #${index + 1} first name is required.`;
   if (!minor.last_name?.trim()) return `Minor #${index + 1} last name is required.`;
+  if (!minor.phone?.trim()) return `Minor #${index + 1} phone is required.`;
   if (!minor.date_of_birth) return `Minor #${index + 1} date of birth is required.`;
   if (calculateAge(minor.date_of_birth) >= 18) return `Minor #${index + 1} must be under 18 years old.`;
   if (!minor.address_line1?.trim()) return `Minor #${index + 1} address line 1 is required.`;
@@ -146,16 +148,19 @@ export async function POST(request: NextRequest) {
       if (!Array.isArray(body.minors) || body.minors.length === 0) {
         return NextResponse.json({ error: "At least one minor is required." }, { status: 400 });
       }
-
+      if (!body.date_of_birth?.trim()) {
+        return NextResponse.json({ error: "Guardian date of birth is required." }, { status: 400 });
+      }
+      if (calculateAge(body.date_of_birth) < 18) {
+        return NextResponse.json({ error: "Guardian must be at least 18 years old." }, { status: 400 });
+      }
+      signerDateOfBirth = body.date_of_birth.trim();
       for (const [index, minor] of body.minors.entries()) {
         const validationError = validateMinor(minor, index);
         if (validationError) {
           return NextResponse.json({ error: validationError }, { status: 400 });
         }
       }
-
-      // The current guardian form does not collect DOB, but the table requires a non-null value.
-      signerDateOfBirth = "1900-01-01";
     }
 
     const userAgent = request.headers.get("user-agent");
@@ -224,13 +229,14 @@ export async function POST(request: NextRequest) {
               last_name,
               middle_name,
               date_of_birth,
+              phone,
               address_line1,
               address_line2,
               city,
               state,
               zip
             )
-            VALUES ($1, $2, $3, $4, $5::date, $6, $7, $8, $9, $10)
+            VALUES ($1, $2, $3, $4, $5::date, $6, $7, $8, $9, $10, $11)
           `,
           [
             signedWaiverId,
@@ -238,6 +244,7 @@ export async function POST(request: NextRequest) {
             minor.last_name?.trim(),
             minor.middle_name?.trim() || null,
             minor.date_of_birth,
+            minor.phone?.trim() || null,
             minor.address_line1?.trim(),
             minor.address_line2?.trim() || null,
             minor.city?.trim(),

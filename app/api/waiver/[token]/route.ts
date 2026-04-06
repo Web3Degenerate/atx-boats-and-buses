@@ -7,6 +7,7 @@ type WaiverLookupRow = {
   token: string;
   vehicle_type: string;
   vehicle_name: string;
+  capacity: number;
   guest_count: number;
   trip_date: string;
   template_body: string;
@@ -35,6 +36,7 @@ export async function GET(
         wl.token,
         wl.vehicle_type,
         v.name AS vehicle_name,
+        v.capacity,
         wl.guest_count,
         wl.trip_date,
         wt.body AS template_body,
@@ -81,6 +83,7 @@ export async function GET(
       vehicleName: waiver.vehicle_name
     },
     guest_count: waiver.guest_count,
+    vehicle_capacity: waiver.capacity,
     signed_count: Number(signedCountResult.rows[0]?.count || 0)
   });
 }

@@ -1,0 +1,1 @@
+ALTER TABLE waiver_minors ADD COLUMN IF NOT EXISTS phone TEXT;

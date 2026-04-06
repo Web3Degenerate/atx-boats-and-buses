@@ -33,6 +33,7 @@ type MinorRow = {
   last_name: string;
   middle_name: string | null;
   date_of_birth: string;
+  phone: string | null;
   address_line1: string;
   address_line2: string | null;
   city: string;
@@ -121,6 +122,7 @@ export async function generateWaiverPDF(signedWaiverId: string): Promise<Buffer>
               last_name,
               middle_name,
               date_of_birth::text,
+              phone,
               address_line1,
               address_line2,
               city,
@@ -223,6 +225,11 @@ export async function generateWaiverPDF(signedWaiverId: string): Promise<Buffer>
         8
       );
       addWrappedText(`Date of Birth: ${minor.date_of_birth}`, 11, 8);
+      if (minor.phone) {
+        ensureSpace(6);
+        doc.text(`Phone: ${minor.phone}`, margin, y);
+        y += 6;
+      }
       addWrappedText(
         `Address: ${formatAddress(minor.address_line1, minor.address_line2, minor.city, minor.state, minor.zip)}`,
         11,

@@ -22,6 +22,7 @@ type WaiverData = {
     vehicleName: string;
   };
   guest_count: number;
+  vehicle_capacity: number;
   signed_count: number;
 };
 
