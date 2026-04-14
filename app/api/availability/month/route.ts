@@ -4,6 +4,8 @@ import { vehicles } from "@/data/vehicles";
 
 export const dynamic = "force-dynamic";
 
+const TURNOVER_BUFFER_MINUTES = 120;
+
 function toMinutes(timeValue: string): number {
   const [hours, minutes] = timeValue.split(":").map(Number);
   return hours * 60 + minutes;
@@ -96,7 +98,7 @@ export async function GET(request: NextRequest) {
       for (let i = 0; i < 12; i++) {
         const slotStart = (9 + i) * 60;
         const slotEnd = (10 + i) * 60;
-        if (slotStart < bookEnd && slotEnd > bookStart) {
+        if (slotStart < bookEnd + TURNOVER_BUFFER_MINUTES && slotEnd > bookStart) {
           slotAvailable[i] = false;
         }
       }

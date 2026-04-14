@@ -63,5 +63,21 @@ Homepage  →  /boats  →  /vehicles/carver-yacht        (existing booking page
 
 ---
 
-## Review
-*(to be filled after implementation)*
+---
+
+## Hotfix: Missing DB Columns Causing Webhook Booking Insert Failure
+
+### Problem
+Stripe webhook `checkout.session.completed` handler tries to INSERT into 3 columns that don't exist in the `bookings` table: `deposit_amount`, `remaining_amount`, `stripe_customer_id`. This causes the INSERT to fail, so bookings are never saved despite payment succeeding.
+
+### Tasks
+- [x] 1. Create migration SQL script (`scripts/add-booking-columns.sql`) to ALTER TABLE and add the 3 missing columns
+- [x] 2. Update `scripts/seed.sql` CREATE TABLE definition to include the new columns
+- [ ] 3. User runs the migration SQL against live Supabase database
+- [x] 4. Verify the webhook handler INSERT matches the updated schema
+
+### Review
+- Created `scripts/add-booking-columns.sql` — adds 3 missing columns to `bookings` table: `deposit_amount` (INTEGER), `remaining_amount` (INTEGER), `stripe_customer_id` (TEXT)
+- Updated `scripts/seed.sql` CREATE TABLE to include the new columns for future DB setups
+- No code changes needed — the webhook INSERT already referenced these columns correctly; it was the DB that was missing them
+- Root cause: columns were added to the webhook code but the corresponding ALTER TABLE was never run on the live database

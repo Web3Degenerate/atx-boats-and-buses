@@ -26,6 +26,8 @@ type AvailabilityResult = {
   slots: TimeSlot[];
 };
 
+const TURNOVER_BUFFER_MINUTES = 120;
+
 function toMinutes(timeValue: string): number {
   const [hours, minutes] = timeValue.split(":").map(Number);
   return hours * 60 + minutes;
@@ -117,7 +119,7 @@ export async function getAvailability(vehicleId: string, date: string): Promise<
     const slotEnd = toMinutes(slot.endTime);
 
     const overlapsBooking = bookings.some(
-      (booking: { start: number; end: number }) => slotStart < booking.end && slotEnd > booking.start
+      (booking: { start: number; end: number }) => slotStart < booking.end + TURNOVER_BUFFER_MINUTES && slotEnd > booking.start
     );
     const overlapsBlockedRange = blockedRanges.some((blockedRange) => slotStart < blockedRange.end && slotEnd > blockedRange.start);
 

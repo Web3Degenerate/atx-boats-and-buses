@@ -1,9 +1,29 @@
-1. First think through the problem, read the codebase for relevant files, and write a plan to todo.md.
-2. The plan should have a list of todo items that you can check off as you complete them. 
-3. Before you begin working, check in with me and I will verify the plan. 
-4. Then, begin working on the todo items, marking them as complete as you go. 
-5. Please every step of the way just give me a high level explanation of what changes you make. 
-6. Make every task and code change you do as simple as possible. We want to avoid making any massive or complex changes. Every change should impact as little code as possible. Everything is about simplicity. 
-7. Finally, add a review section to the todo.md file with a summary of the changes you made and any other relevant information. 
-8. DO NOT BE LAZY. NEVER BE LAZY. IF THERE IS A BUG FIND THE ROOT CAUSE AND FIX IT. NO TEMPORARY FIXES. YOU ARE A SENIOR DEVELOPER. NEVER BE LAZY.
-9. MAKE ALL FIXES AND CODE CHANGES AS SIMPLE AS HUMANLY POSSIBLE. THEY SHOULD ONLY IMPACT NECESSARY CODE RELEVANT TO THE TASK AND NOTHING ELSE. IT SHOULD IMPACT AS LITTLE CODE AS POSSIBLE. YOUR GOAL IS TO NOT INTRODUCE ANY BUGS. IT IS ALL ABOUT SIMPLICITY.
+# Project Instructions
+
+## Workflow
+1. Before starting any task, read the relevant parts of the codebase and write 
+   a plan to todo.md with checkable todo items.
+2. Check in with me to verify the plan before writing any code.
+3. Work through the todo items one at a time, marking each complete as you go.
+4. Give me a brief high-level explanation of each change as you make it.
+5. When finished, add a Review section to todo.md summarizing what changed and why.
+
+## Code Philosophy
+- Make every change as small and targeted as possible.
+- Only touch code directly relevant to the task. Minimize side effects.
+- Always find and fix root causes — no workarounds or temporary patches.
+- When in doubt, do less and confirm with me.
+
+## Obsidian Vault
+My Obsidian vault is located at: /Users/web3dev/Documents/ai-brain
+
+When I ask you to take notes, log decisions, or document anything:
+- Create or edit markdown files in the vault above
+- Use [[wikilinks]] for cross-references between notes
+- Place project notes in: /Users/web3dev/Documents/ai-brain/Projects/<project-name>/
+- Place one-off reference notes in: /Users/web3dev/Documents/ai-brain/Notes/
+- Use frontmatter for metadata, e.g.:
+  ---
+  date: 2026-04-01
+  tags: [project-name, decisions]
+  ---
