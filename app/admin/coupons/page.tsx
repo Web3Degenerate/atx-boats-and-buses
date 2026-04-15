@@ -10,7 +10,15 @@ type CouponRow = {
   valid_from: string;
   valid_to: string;
   active: boolean;
+  vehicle_id: string | null;
+  vehicle_name: string | null;
+  auto_apply: boolean;
   created_at: string;
+};
+
+type AdminVehicle = {
+  id: string;
+  name: string;
 };
 
 export default function AdminCouponsPage() {
@@ -20,6 +28,9 @@ export default function AdminCouponsPage() {
   const [discountPercent, setDiscountPercent] = useState("");
   const [validFrom, setValidFrom] = useState("");
   const [validTo, setValidTo] = useState("");
+  const [vehicleId, setVehicleId] = useState<string | null>(null);
+  const [autoApply, setAutoApply] = useState(false);
+  const [adminVehicles, setAdminVehicles] = useState<AdminVehicle[]>([]);
   const [loading, setLoading] = useState(true);
 
   async function fetchCoupons() {
@@ -39,10 +50,16 @@ export default function AdminCouponsPage() {
     fetchCoupons();
   }, [router]);
 
+  useEffect(() => {
+    fetch("/api/vehicles")
+      .then((r) => r.json())
+      .then((data) => setAdminVehicles(data));
+  }, []);
+
   async function handleCreateCoupon(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    await fetch("/api/admin/coupons", {
+    const response = await fetch("/api/admin/coupons", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -51,14 +68,24 @@ export default function AdminCouponsPage() {
         code,
         discountPercent: Number(discountPercent),
         validFrom,
-        validTo
+        validTo,
+        vehicleId,
+        autoApply
       })
     });
+
+    if (!response.ok) {
+      const data = (await response.json()) as { error?: string };
+      alert(data.error ?? "Failed to create coupon.");
+      return;
+    }
 
     setCode("");
     setDiscountPercent("");
     setValidFrom("");
     setValidTo("");
+    setVehicleId(null);
+    setAutoApply(false);
     await fetchCoupons();
   }
 
@@ -90,7 +117,7 @@ export default function AdminCouponsPage() {
     <div className="space-y-6">
       <form onSubmit={handleCreateCoupon} className="rounded-lg border border-slate-200 bg-white p-4">
         <h2 className="text-lg font-semibold text-primary">Create Coupon</h2>
-        <div className="mt-3 grid gap-3 md:grid-cols-4">
+        <div className="mt-3 grid gap-3 md:grid-cols-6">
           <label className="space-y-1">
             <span className="text-sm text-slate-700">Code</span>
             <input
@@ -133,6 +160,28 @@ export default function AdminCouponsPage() {
               required
             />
           </label>
+          <label className="space-y-1">
+            <span className="text-sm text-slate-700">Vehicle</span>
+            <select
+              value={vehicleId ?? ""}
+              onChange={(e) => setVehicleId(e.target.value || null)}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-black"
+            >
+              <option value="">All Vehicles</option>
+              {adminVehicles.map((v) => (
+                <option key={v.id} value={v.id}>{v.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-2 pt-5">
+            <input
+              type="checkbox"
+              checked={autoApply}
+              onChange={(e) => setAutoApply(e.target.checked)}
+              className="h-4 w-4"
+            />
+            <span className="text-sm text-slate-700">Auto-apply</span>
+          </label>
         </div>
         <button type="submit" className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white">
           Create Coupon
@@ -147,6 +196,8 @@ export default function AdminCouponsPage() {
               <th className="px-3 py-2 text-left font-semibold text-slate-900">Discount %</th>
               <th className="px-3 py-2 text-left font-semibold text-slate-900">Valid From</th>
               <th className="px-3 py-2 text-left font-semibold text-slate-900">Valid To</th>
+              <th className="px-3 py-2 text-left font-semibold text-slate-900">Vehicle</th>
+              <th className="px-3 py-2 text-left font-semibold text-slate-900">Auto-apply</th>
               <th className="px-3 py-2 text-left font-semibold text-slate-900">Active</th>
               <th className="px-3 py-2 text-left font-semibold text-slate-900">Actions</th>
             </tr>
@@ -158,6 +209,8 @@ export default function AdminCouponsPage() {
                 <td className="px-3 py-2">{coupon.discount_percent}%</td>
                 <td className="px-3 py-2">{coupon.valid_from}</td>
                 <td className="px-3 py-2">{coupon.valid_to}</td>
+                <td className="px-3 py-2">{coupon.vehicle_name ?? "All Vehicles"}</td>
+                <td className="px-3 py-2">{coupon.auto_apply ? "Yes" : "No"}</td>
                 <td className="px-3 py-2">{coupon.active ? "Yes" : "No"}</td>
                 <td className="px-3 py-2">
                   <div className="flex gap-2">
