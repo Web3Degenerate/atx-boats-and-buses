@@ -14,6 +14,7 @@ type CouponRow = {
   vehicle_name: string | null;
   auto_apply: boolean;
   created_at: string;
+  promo_text: string | null;
 };
 
 type AdminVehicle = {
@@ -30,6 +31,7 @@ export default function AdminCouponsPage() {
   const [validTo, setValidTo] = useState("");
   const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [autoApply, setAutoApply] = useState(false);
+  const [promoText, setPromoText] = useState("");
   const [adminVehicles, setAdminVehicles] = useState<AdminVehicle[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -70,7 +72,8 @@ export default function AdminCouponsPage() {
         validFrom,
         validTo,
         vehicleId,
-        autoApply
+        autoApply,
+        promoText: promoText.trim() || null
       })
     });
 
@@ -86,6 +89,7 @@ export default function AdminCouponsPage() {
     setValidTo("");
     setVehicleId(null);
     setAutoApply(false);
+    setPromoText("");
     await fetchCoupons();
   }
 
@@ -183,6 +187,21 @@ export default function AdminCouponsPage() {
             <span className="text-sm text-slate-700">Auto-apply</span>
           </label>
         </div>
+        <label className="mt-3 block space-y-1">
+          <span className="text-sm text-slate-700">
+            Promo Text{" "}
+            <span className="text-slate-400">
+              (optional — shown to customers on the vehicle page)
+            </span>
+          </span>
+          <input
+            type="text"
+            value={promoText}
+            onChange={(e) => setPromoText(e.target.value)}
+            placeholder="e.g. 20% off on Weekday Rentals"
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-black"
+          />
+        </label>
         <button type="submit" className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white">
           Create Coupon
         </button>
@@ -198,6 +217,7 @@ export default function AdminCouponsPage() {
               <th className="px-3 py-2 text-left font-semibold text-slate-900">Valid To</th>
               <th className="px-3 py-2 text-left font-semibold text-slate-900">Vehicle</th>
               <th className="px-3 py-2 text-left font-semibold text-slate-900">Auto-apply</th>
+              <th className="px-3 py-2 text-left font-semibold text-slate-900">Promo Text</th>
               <th className="px-3 py-2 text-left font-semibold text-slate-900">Active</th>
               <th className="px-3 py-2 text-left font-semibold text-slate-900">Actions</th>
             </tr>
@@ -211,6 +231,7 @@ export default function AdminCouponsPage() {
                 <td className="px-3 py-2">{coupon.valid_to}</td>
                 <td className="px-3 py-2">{coupon.vehicle_name ?? "All Vehicles"}</td>
                 <td className="px-3 py-2">{coupon.auto_apply ? "Yes" : "No"}</td>
+                <td className="px-3 py-2">{coupon.promo_text ?? "—"}</td>
                 <td className="px-3 py-2">{coupon.active ? "Yes" : "No"}</td>
                 <td className="px-3 py-2">
                   <div className="flex gap-2">

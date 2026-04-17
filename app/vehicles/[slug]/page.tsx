@@ -1,12 +1,11 @@
-"use client";
-
-import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
-import UnifiedBookingForm from "@/components/booking/UnifiedBookingForm";
 import Container from "@/components/ui/Container";
-import ImageCarousel from "@/components/vehicles/ImageCarousel";
 import ImageCarouselAnimated from "@/components/vehicles/ImageCarouselAnimated";
+import UnifiedBookingForm from "@/components/booking/UnifiedBookingForm";
+import { vehicles as staticVehicles } from "@/data/vehicles";
+import { query } from "@/lib/db";
 import { Vehicle } from "@/types";
+
+export const dynamic = "force-dynamic";
 
 const PREVOST_IMAGES = [
   "/images/Luxury_Bus_1/Provost_mar_15_2026/1bus-1.webp",
@@ -68,65 +67,108 @@ const COBALT_IMAGES = [
   "/images/cobalt-boat/cobalt7.jpeg",
 ];
 
-export default function VehicleDetailPage() {
-  const params = useParams<{ slug: string }>();
-  const slug = params?.slug;
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+type VehicleRow = {
+  id: string;
+  name: string;
+  slug: string;
+  type: Vehicle["type"];
+  description: string;
+  capacity: number;
+  price_per_hour: number;
+  minimum_hours: number;
+  maximum_hours: number;
+  fuel_charge_percent: number;
+  optional_charge_label: string;
+  features: string[] | string;
+  images: string[] | string;
+};
 
-  useEffect(() => {
-    async function fetchVehicles() {
-      try {
-        const response = await fetch("/api/vehicles");
-        if (!response.ok) {
-          setError("Unable to load vehicle details. Please refresh the page.");
-          return;
-        }
-
-        const data = (await response.json()) as Vehicle[];
-        setVehicles(data);
-      } catch (error) {
-        console.error(error);
-        setError("Unable to load vehicle details. Please refresh the page.");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchVehicles();
-  }, []);
-
-  const vehicle = useMemo(() => vehicles.find((item) => item.slug === slug), [vehicles, slug]);
-
-  if (loading) {
-    return (
-      <section className="py-12">
-        <Container className="space-y-8">
-          <div className="grid gap-4 md:grid-cols-2">
-            {[...Array(2)].map((_, i) => (
-              <div key={i} className="h-64 animate-pulse rounded-xl bg-neutral-800" />
-            ))}
-          </div>
-          <div className="space-y-3">
-            <div className="h-8 w-1/2 animate-pulse rounded bg-neutral-800" />
-            <div className="h-4 w-full animate-pulse rounded bg-neutral-800" />
-            <div className="h-4 w-3/4 animate-pulse rounded bg-neutral-800" />
-          </div>
-        </Container>
-      </section>
-    );
+function parseJsonArray(value: string[] | string): string[] {
+  if (Array.isArray(value)) {
+    return value;
   }
 
-  if (error || !vehicle) {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? (parsed as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+type PageProps = {
+  params: {
+    slug: string;
+  };
+};
+
+export default async function VehicleDetailPage({ params }: PageProps) {
+  const result = await query<VehicleRow>(
+    `
+      SELECT id, name, slug, type, description, capacity, price_per_hour, minimum_hours, maximum_hours, fuel_charge_percent, optional_charge_label, features, images
+      FROM vehicles
+      WHERE slug = $1
+      LIMIT 1
+    `,
+    [params.slug]
+  );
+
+  const row = result.rows[0];
+
+  if (!row) {
     return (
       <section className="py-12">
         <Container>
-          <p className="text-sm text-red-400">{error || "Vehicle not found."}</p>
+          <p className="text-sm text-red-400">Vehicle not found.</p>
         </Container>
       </section>
     );
   }
+
+  const staticVehicle = staticVehicles.find((item) => item.slug === row.slug);
+  const vehicle: Vehicle = {
+    id: staticVehicle?.id || row.slug,
+    name: row.name,
+    slug: row.slug,
+    type: row.type,
+    description: row.description,
+    capacity: row.capacity,
+    pricePerHour: row.price_per_hour / 100,
+    minimumHours: row.minimum_hours,
+    maximumHours: row.maximum_hours,
+    fuelChargePercent: row.fuel_charge_percent,
+    optionalChargeLabel: row.optional_charge_label || staticVehicle?.optionalChargeLabel || "Fuel Charge",
+    features: parseJsonArray(row.features),
+    images: parseJsonArray(row.images)
+  };
+
+  const dbVehicleId = row.id;
+  const couponResult = await query<{
+    id: string;
+    code: string;
+    discount_percent: number;
+    valid_from: string;
+    valid_to: string;
+    promo_text: string | null;
+  }>(
+    `SELECT id, code, discount_percent, valid_from::text, valid_to::text, promo_text FROM coupons
+     WHERE auto_apply = TRUE AND active = TRUE
+       AND valid_from <= CURRENT_DATE AND valid_to >= CURRENT_DATE
+       AND (vehicle_id = $1 OR vehicle_id IS NULL)
+     ORDER BY (vehicle_id IS NOT NULL) DESC, created_at DESC
+     LIMIT 1`,
+    [dbVehicleId]
+  );
+  const autoApplyCoupon = couponResult.rows[0]
+    ? {
+        id: couponResult.rows[0].id,
+        code: couponResult.rows[0].code,
+        discountPercent: couponResult.rows[0].discount_percent,
+        validFrom: couponResult.rows[0].valid_from,
+        validTo: couponResult.rows[0].valid_to,
+        promoText: couponResult.rows[0].promo_text
+      }
+    : null;
 
   return (
     <section className="py-12">
@@ -139,7 +181,7 @@ export default function VehicleDetailPage() {
                 ? EXECUTIVE_SHUTTLE_IMAGES
                 : vehicle.slug === "cobalt-boat"
                   ? COBALT_IMAGES
-                : vehicle.images
+                  : vehicle.images
           }
           alt={vehicle.name}
         />
@@ -151,6 +193,9 @@ export default function VehicleDetailPage() {
             <span className="font-semibold">Capacity:</span> Up to {vehicle.capacity} guests
           </p>
           <p className="text-xl font-semibold text-emerald-400">${vehicle.pricePerHour} / hour</p>
+          {autoApplyCoupon?.promoText && (
+            <p className="text-sm font-medium text-emerald-400">{autoApplyCoupon.promoText}</p>
+          )}
 
           <div>
             <h2 className="mb-2 text-lg font-semibold text-white">Features</h2>
@@ -161,7 +206,7 @@ export default function VehicleDetailPage() {
             </ul>
           </div>
 
-          <UnifiedBookingForm vehicle={vehicle} />
+          <UnifiedBookingForm vehicle={vehicle} autoApplyCoupon={autoApplyCoupon} />
         </div>
       </Container>
     </section>

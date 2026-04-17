@@ -8,6 +8,14 @@ import { TimeSlot, Vehicle } from "@/types";
 
 type UnifiedBookingFormProps = {
   vehicle: Vehicle;
+  autoApplyCoupon?: {
+    id: string;
+    code: string;
+    discountPercent: number;
+    validFrom: string;
+    validTo: string;
+    promoText: string | null;
+  } | null;
 };
 
 type AvailabilityResponse = {
@@ -71,7 +79,7 @@ function buildSlotsForDisplay(date: string, apiSlots: TimeSlot[], timeRange: str
   });
 }
 
-export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps) {
+export default function UnifiedBookingForm({ vehicle, autoApplyCoupon }: UnifiedBookingFormProps) {
   const router = useRouter();
   const [pickupDate, setPickupDate] = useState("");
   const [guestCount, setGuestCount] = useState("");
@@ -188,6 +196,30 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
     : null;
   const showDeposit = daysUntilBooking !== null && daysUntilBooking > 2;
   const depositAmount = Math.round(discountedTotal * 0.2);
+  const isAutoApplied = Boolean(
+    autoApplyCoupon &&
+    appliedCoupon?.id === autoApplyCoupon.id
+  );
+
+  useEffect(() => {
+    if (
+      autoApplyCoupon &&
+      pickupDate &&
+      pickupDate >= autoApplyCoupon.validFrom &&
+      pickupDate <= autoApplyCoupon.validTo
+    ) {
+      setCouponCode(autoApplyCoupon.code);
+      setAppliedCoupon(autoApplyCoupon);
+    } else {
+      setAppliedCoupon((prev) =>
+        prev?.id === autoApplyCoupon?.id ? null : prev
+      );
+      setCouponCode((prev) =>
+        prev === autoApplyCoupon?.code ? "" : prev
+      );
+      setCouponError("");
+    }
+  }, [autoApplyCoupon, pickupDate]);
 
   async function fetchAvailability(date: string, timeRange: string[]): Promise<TimeSlot[]> {
     const response = await fetch(`/api/availability?vehicleId=${vehicle.id}&date=${date}`);
@@ -249,7 +281,7 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ code: trimmedCode })
+        body: JSON.stringify({ code: trimmedCode, vehicleId: vehicle.id })
       });
 
       const data = (await response.json()) as CouponResponse & { error?: string };
@@ -575,46 +607,49 @@ export default function UnifiedBookingForm({ vehicle }: UnifiedBookingFormProps)
               )}
             </div>
             <div className="mt-4 space-y-2">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={couponCode}
-                  onChange={(event) => {
-                    setCouponCode(event.target.value);
-                    setCouponError("");
-                  }}
-                  placeholder="Coupon code"
-                  className="flex-1 rounded-md border border-white/10 bg-neutral-700 px-3 py-2 text-sm text-white placeholder:text-neutral-500"
-                />
-                <button
-                  type="button"
-                  onClick={handleApplyCoupon}
-                  disabled={couponLoading || !couponCode.trim()}
-                  className="rounded-md bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  {couponLoading ? "Applying..." : "Apply"}
-                </button>
-              </div>
-              {appliedCoupon && (
-                <div className="flex items-center justify-between rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
-                  <span>
-                    Applied: {appliedCoupon.code} (-{appliedCoupon.discountPercent}%)
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAppliedCoupon(null);
-                      setCouponCode("");
-                      setCouponError("");
-                    }}
-                    className="text-base leading-none text-emerald-300 hover:text-white"
-                    aria-label="Remove coupon"
-                  >
-                    ×
-                  </button>
+              {isAutoApplied && autoApplyCoupon ? (
+                <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
+                  <p className="font-semibold">{autoApplyCoupon.code}</p>
+                  <p>{autoApplyCoupon.discountPercent}% Coupon Applied To Your Reservation</p>
                 </div>
+              ) : (
+                <>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={couponCode}
+                      onChange={(event) => {
+                        setCouponCode(event.target.value);
+                        setCouponError("");
+                      }}
+                      placeholder="Coupon code"
+                      className="flex-1 rounded-md border border-white/10 bg-neutral-700 px-3 py-2 text-sm text-white placeholder:text-neutral-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyCoupon}
+                      disabled={couponLoading || !couponCode.trim()}
+                      className="rounded-md bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      {couponLoading ? "Applying..." : "Apply"}
+                    </button>
+                  </div>
+                  {appliedCoupon && (
+                    <div className="flex items-center justify-between rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
+                      <span>Applied: {appliedCoupon.code} (-{appliedCoupon.discountPercent}%)</span>
+                      <button
+                        type="button"
+                        onClick={() => { setAppliedCoupon(null); setCouponCode(""); setCouponError(""); }}
+                        className="text-base leading-none text-emerald-300 hover:text-white"
+                        aria-label="Remove coupon"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                  {couponError && <p className="text-sm text-red-400">{couponError}</p>}
+                </>
               )}
-              {couponError && <p className="text-sm text-red-400">{couponError}</p>}
             </div>
           </div>
 

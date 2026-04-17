@@ -14,6 +14,7 @@ type CouponRow = {
   vehicle_name: string | null;
   auto_apply: boolean;
   created_at: string;
+  promo_text: string | null;
 };
 
 export async function GET(request: NextRequest) {
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
   const result = await query<CouponRow>(
     `
       SELECT c.id, c.code, c.discount_percent, c.valid_from, c.valid_to, c.active,
-             c.vehicle_id, c.auto_apply, c.created_at,
+             c.vehicle_id, c.auto_apply, c.created_at, c.promo_text,
              v.name AS vehicle_name
       FROM coupons c
       LEFT JOIN vehicles v ON v.id = c.vehicle_id
@@ -47,6 +48,7 @@ export async function POST(request: NextRequest) {
     validTo?: string;
     vehicleId?: string | null;
     autoApply?: boolean;
+    promoText?: string | null;
   };
 
   const code = body.code?.trim().toUpperCase();
@@ -70,10 +72,10 @@ export async function POST(request: NextRequest) {
 
   await query(
     `
-      INSERT INTO coupons (code, discount_percent, valid_from, valid_to, active, vehicle_id, auto_apply)
-      VALUES ($1, $2, $3::date, $4::date, TRUE, $5, $6)
+      INSERT INTO coupons (code, discount_percent, valid_from, valid_to, active, vehicle_id, auto_apply, promo_text)
+      VALUES ($1, $2, $3::date, $4::date, TRUE, $5, $6, $7)
     `,
-    [code, body.discountPercent, body.validFrom, body.validTo, dbVehicleId, body.autoApply ?? false]
+    [code, body.discountPercent, body.validFrom, body.validTo, dbVehicleId, body.autoApply ?? false, body.promoText?.trim() || null]
   );
 
   return NextResponse.json({ success: true });
