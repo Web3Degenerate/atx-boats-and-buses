@@ -25,6 +25,7 @@ type CouponRow = {
   id: string;
   code: string;
   discount_percent: number;
+  vehicle_id: string | null;
 };
 
 type BannedEmailRow = {
@@ -73,6 +74,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
     }
 
+    const vehicleResult = await query<{ id: string }>(
+      "SELECT id FROM vehicles WHERE slug = $1 LIMIT 1",
+      [vehicle.slug]
+    );
+    const dbVehicleId = vehicleResult.rows[0]?.id;
+
+    if (!dbVehicleId) {
+      return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
+    }
+
     const actualEndDate = endDate || date;
     const startDateTime = new Date(`${date}T${startTime}:00`);
     const endDateTime = new Date(`${actualEndDate}T${endTime}:00`);
@@ -100,7 +111,7 @@ export async function POST(request: NextRequest) {
     if (couponId) {
       const couponResult = await query<CouponRow>(
         `
-          SELECT id, code, discount_percent
+          SELECT id, code, discount_percent, vehicle_id
           FROM coupons
           WHERE id = $1
             AND active = TRUE
@@ -114,6 +125,10 @@ export async function POST(request: NextRequest) {
       appliedCoupon = couponResult.rows[0] || null;
 
       if (!appliedCoupon) {
+        return NextResponse.json({ error: "Invalid or expired coupon code." }, { status: 400 });
+      }
+
+      if (appliedCoupon.vehicle_id !== null && appliedCoupon.vehicle_id !== dbVehicleId) {
         return NextResponse.json({ error: "Invalid or expired coupon code." }, { status: 400 });
       }
     }
