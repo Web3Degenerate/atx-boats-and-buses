@@ -2,17 +2,7 @@ import { TimeSlot } from "@/types";
 import { query } from "@/lib/db";
 import { vehicles } from "@/data/vehicles";
 
-type BookingTimeRow = {
-  start_time: string;
-  end_time: string;
-};
-
-type BookingRow = {
-  start_time: string;
-  end_time: string;
-};
-
-type BlockedRangeRow = {
+type DateTimeRangeRow = {
   start_date: string;
   start_time: string;
   end_date: string;
@@ -37,13 +27,13 @@ function formatTime(hour: number): string {
   return `${String(hour).padStart(2, "0")}:00`;
 }
 
-function getBlockedRangeForDate(blockedRange: BlockedRangeRow, date: string): { start: number; end: number } | null {
-  if (date < blockedRange.start_date || date > blockedRange.end_date) {
+function getRangeForDate(range: DateTimeRangeRow, date: string): { start: number; end: number } | null {
+  if (date < range.start_date || date > range.end_date) {
     return null;
   }
 
-  const start = blockedRange.start_date === date ? toMinutes(blockedRange.start_time) : 0;
-  const end = blockedRange.end_date === date ? toMinutes(blockedRange.end_time) : 24 * 60;
+  const start = range.start_date === date ? toMinutes(range.start_time) : 0;
+  const end = range.end_date === date ? toMinutes(range.end_time) : 24 * 60;
 
   return { start, end };
 }
@@ -78,18 +68,19 @@ export async function getAvailability(vehicleId: string, date: string): Promise<
     return { vehicleId, date, isBlocked: false, slots: generateSlots().map((s) => ({ ...s, date })) };
   }
 
-  const bookingsResult = await query<BookingTimeRow>(
+  const bookingsResult = await query<DateTimeRangeRow>(
     `
-      SELECT start_time::text, end_time::text
+      SELECT date::text AS start_date, end_date::text, start_time::text, end_time::text
       FROM bookings
       WHERE vehicle_id = $1
-        AND date = $2::date
+        AND date <= $2::date
+        AND end_date >= $2::date
         AND status IN ('pending', 'confirmed')
     `,
     [dbVehicleId, date]
   );
 
-  const blockedRangesResult = await query<BlockedRangeRow>(
+  const blockedRangesResult = await query<DateTimeRangeRow>(
     `
       SELECT start_date, start_time::text, end_date, end_time::text
       FROM blocked_dates
@@ -105,13 +96,22 @@ export async function getAvailability(vehicleId: string, date: string): Promise<
     date
   }));
 
-  const bookings = bookingsResult.rows.map((row: BookingRow) => ({
-    start: toMinutes(row.start_time),
-    end: toMinutes(row.end_time)
-  }));
+  const bookings = bookingsResult.rows
+    .map((row) => {
+      const range = getRangeForDate(row, date);
+      if (!range) {
+        return null;
+      }
+
+      return {
+        ...range,
+        isEndDate: row.end_date === date
+      };
+    })
+    .filter((range): range is { start: number; end: number; isEndDate: boolean } => Boolean(range));
 
   const blockedRanges = blockedRangesResult.rows
-    .map((range) => getBlockedRangeForDate(range, date))
+    .map((range) => getRangeForDate(range, date))
     .filter((range): range is { start: number; end: number } => Boolean(range));
 
   const availabilitySlots = slots.map((slot) => {
@@ -119,7 +119,11 @@ export async function getAvailability(vehicleId: string, date: string): Promise<
     const slotEnd = toMinutes(slot.endTime);
 
     const overlapsBooking = bookings.some(
-      (booking: { start: number; end: number }) => slotStart < booking.end + TURNOVER_BUFFER_MINUTES && slotEnd > booking.start
+      (booking) => {
+        // Turnover applies only after the booking's real end, not on full intermediate days.
+        const bookingEnd = booking.isEndDate ? booking.end + TURNOVER_BUFFER_MINUTES : booking.end;
+        return slotStart < bookingEnd && slotEnd > booking.start;
+      }
     );
     const overlapsBlockedRange = blockedRanges.some((blockedRange) => slotStart < blockedRange.end && slotEnd > blockedRange.start);
 

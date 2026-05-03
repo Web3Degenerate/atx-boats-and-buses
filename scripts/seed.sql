@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   customer_email TEXT NOT NULL,
   customer_phone TEXT NOT NULL,
   date DATE NOT NULL,
+  end_date DATE NOT NULL,
   start_time TIME NOT NULL,
   end_time TIME NOT NULL,
   guest_count INTEGER NOT NULL,
@@ -43,7 +44,8 @@ CREATE TABLE IF NOT EXISTS bookings (
   stripe_session_id TEXT UNIQUE,
   stripe_payment_intent_id TEXT,
   stripe_customer_id TEXT DEFAULT '',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT bookings_end_after_start_check CHECK ((end_date > date) OR (end_date = date AND end_time > start_time))
 );
 
 CREATE TABLE IF NOT EXISTS blocked_dates (

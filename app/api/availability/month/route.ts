@@ -6,9 +6,27 @@ export const dynamic = "force-dynamic";
 
 const TURNOVER_BUFFER_MINUTES = 120;
 
+type DateTimeRangeRow = {
+  start_date: string;
+  start_time: string;
+  end_date: string;
+  end_time: string;
+};
+
 function toMinutes(timeValue: string): number {
   const [hours, minutes] = timeValue.split(":").map(Number);
   return hours * 60 + minutes;
+}
+
+function getRangeForDate(range: DateTimeRangeRow, date: string): { start: number; end: number } | null {
+  if (date < range.start_date || date > range.end_date) {
+    return null;
+  }
+
+  const start = range.start_date === date ? toMinutes(range.start_time) : 0;
+  const end = range.end_date === date ? toMinutes(range.end_time) : 24 * 60;
+
+  return { start, end };
 }
 
 export async function GET(request: NextRequest) {
@@ -42,7 +60,7 @@ export async function GET(request: NextRequest) {
 
   // Two queries total instead of ~30 per month
   const [blockedResult, bookingsResult] = await Promise.all([
-    query<{ start_date: string; start_time: string; end_date: string; end_time: string }>(
+    query<DateTimeRangeRow>(
       `SELECT start_date::text, start_time::text, end_date::text, end_time::text
        FROM blocked_dates
        WHERE vehicle_id = $1
@@ -50,12 +68,12 @@ export async function GET(request: NextRequest) {
          AND end_date >= $3::date`,
       [dbVehicleId, lastDay, firstDay]
     ),
-    query<{ date: string; start_time: string; end_time: string }>(
-      `SELECT date::text, start_time::text, end_time::text
+    query<DateTimeRangeRow>(
+      `SELECT date::text AS start_date, end_date::text, start_time::text, end_time::text
        FROM bookings
        WHERE vehicle_id = $1
-         AND date >= $2::date
          AND date <= $3::date
+         AND end_date >= $2::date
          AND status IN ('pending', 'confirmed')`,
       [dbVehicleId, firstDay, lastDay]
     ),
@@ -75,15 +93,13 @@ export async function GET(request: NextRequest) {
 
     // Mark slots blocked by blocked_dates ranges
     for (const range of blockedResult.rows) {
-      if (dateStr < range.start_date || dateStr > range.end_date) continue;
-
-      const blockStart = range.start_date === dateStr ? toMinutes(range.start_time) : 0;
-      const blockEnd = range.end_date === dateStr ? toMinutes(range.end_time) : 24 * 60;
+      const blockedRange = getRangeForDate(range, dateStr);
+      if (!blockedRange) continue;
 
       for (let i = 0; i < 12; i++) {
         const slotStart = (9 + i) * 60;
         const slotEnd = (10 + i) * 60;
-        if (slotStart < blockEnd && slotEnd > blockStart) {
+        if (slotStart < blockedRange.end && slotEnd > blockedRange.start) {
           slotAvailable[i] = false;
         }
       }
@@ -91,14 +107,17 @@ export async function GET(request: NextRequest) {
 
     // Mark slots blocked by existing bookings
     for (const booking of bookingsResult.rows) {
-      if (booking.date !== dateStr) continue;
-      const bookStart = toMinutes(booking.start_time);
-      const bookEnd = toMinutes(booking.end_time);
+      const bookingRange = getRangeForDate(booking, dateStr);
+      if (!bookingRange) continue;
 
       for (let i = 0; i < 12; i++) {
         const slotStart = (9 + i) * 60;
         const slotEnd = (10 + i) * 60;
-        if (slotStart < bookEnd + TURNOVER_BUFFER_MINUTES && slotEnd > bookStart) {
+        // Turnover applies only after the booking's real end, not on full intermediate days.
+        const bookingEnd = booking.end_date === dateStr
+          ? bookingRange.end + TURNOVER_BUFFER_MINUTES
+          : bookingRange.end;
+        if (slotStart < bookingEnd && slotEnd > bookingRange.start) {
           slotAvailable[i] = false;
         }
       }
