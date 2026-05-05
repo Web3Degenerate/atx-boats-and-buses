@@ -42,7 +42,10 @@ async function markChargeFailed(bookingId: string) {
 
 export async function GET(request: NextRequest) {
   const secret = request.nextUrl.searchParams.get("secret");
-  if (!secret || secret !== process.env.CRON_SECRET) {
+  const authHeader = request.headers.get("authorization");
+  const expectedHeader = `Bearer ${process.env.CRON_SECRET}`;
+
+  if (secret !== process.env.CRON_SECRET && authHeader !== expectedHeader) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
