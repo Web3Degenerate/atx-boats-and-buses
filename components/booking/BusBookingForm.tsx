@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import DatePicker from "@/components/booking/DatePicker";
 import TimeSlotGrid from "@/components/booking/TimeSlotGrid";
+import { calculateSalesTaxCents, centsToDollars, dollarsToCents, SALES_TAX_PERCENT_LABEL } from "@/lib/pricing";
 import { TimeSlot, Vehicle } from "@/types";
 
 type BusBookingFormProps = {
@@ -220,9 +221,10 @@ export default function BusBookingForm({ vehicle }: BusBookingFormProps) {
     return differenceHours(start, end);
   }, [startDateStr, startTime, endDateStr, endTime]);
 
-  const basePrice = selectedHours * vehicle.pricePerHour;
-  const fuelCharge = basePrice * (vehicle.fuelChargePercent / 100);
-  const totalPrice = basePrice + fuelCharge;
+  const basePriceCents = dollarsToCents(selectedHours * vehicle.pricePerHour);
+  const fuelChargeCents = Math.round(basePriceCents * (vehicle.fuelChargePercent / 100));
+  const salesTaxCents = calculateSalesTaxCents(basePriceCents + fuelChargeCents);
+  const totalPriceCents = basePriceCents + fuelChargeCents + salesTaxCents;
   const optionalChargeLabel = vehicle.optionalChargeLabel || "Fuel Charge";
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -396,9 +398,10 @@ export default function BusBookingForm({ vehicle }: BusBookingFormProps) {
         <h3 className="text-lg font-semibold text-primary">Price Summary</h3>
         <div className="mt-2 space-y-1 text-sm text-slate-700">
           <p>Hours: {selectedHours || 0}</p>
-          <p>Base: ${basePrice.toFixed(2)}</p>
-          {vehicle.fuelChargePercent > 0 && <p>{optionalChargeLabel}: ${fuelCharge.toFixed(2)}</p>}
-          <p className="pt-1 text-base font-semibold text-slate-900">Total: ${totalPrice.toFixed(2)}</p>
+          <p>Base: ${centsToDollars(basePriceCents).toFixed(2)}</p>
+          {vehicle.fuelChargePercent > 0 && <p>{optionalChargeLabel}: ${centsToDollars(fuelChargeCents).toFixed(2)}</p>}
+          <p>Sales Tax ({SALES_TAX_PERCENT_LABEL}): ${centsToDollars(salesTaxCents).toFixed(2)}</p>
+          <p className="pt-1 text-base font-semibold text-slate-900">Total: ${centsToDollars(totalPriceCents).toFixed(2)}</p>
         </div>
       </div>
 
