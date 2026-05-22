@@ -139,12 +139,14 @@ Push the completed sales tax implementation to GitHub without including unrelate
 - [x] 5. Stage only scoped files
 - [x] 6. Run TypeScript verification
 - [x] 7. Commit the scoped changes
-- [ ] 8. Push the branch to `origin`
-- [ ] 9. Open a draft pull request if available; `gh` is not installed locally
-- [ ] 10. Add Review section summarizing publish result
+- [x] 8. Push the branch to `origin`
+- [x] 9. Open a draft pull request if available; `gh` is not installed locally
+- [x] 10. Add Review section summarizing publish result
 
 ### Review
 - Created branch `codex/add-sales-tax-line-item`.
 - Staged only the sales-tax implementation and `todo.md`.
 - Left unrelated local files out of the commit: `.env.example` deletion, `.DS_Store`, and `AGENTS.md`.
 - Verified with `npx tsc --noEmit`.
+- Pushed branch `codex/add-sales-tax-line-item` to `origin`.
+- Opened draft PR #1: https://github.com/Web3Degenerate/atx-boats-and-buses/pull/1
