@@ -2,6 +2,13 @@ import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { query } from "@/lib/db";
 
+function getWaiverOnlyEmails() {
+  return (process.env.WAIVER_ONLY_ADMIN_EMAILS || "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
@@ -13,6 +20,10 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user }) {
       if (!user.email) {
         return false;
+      }
+
+      if (getWaiverOnlyEmails().includes(user.email.toLowerCase())) {
+        return true;
       }
 
       const result = await query(

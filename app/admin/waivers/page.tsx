@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useState } from "react";
-import { ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Copy, ExternalLink } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 type SignerRow = {
@@ -67,6 +67,20 @@ export default function AdminWaiversPage() {
   const [rows, setRows] = useState<WaiverBookingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedBookings, setExpandedBookings] = useState<string[]>([]);
+  const [copiedBookingId, setCopiedBookingId] = useState<string | null>(null);
+
+  async function copyWaiverLink(bookingId: string, token: string) {
+    const url = `${window.location.origin}/waiver/${token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedBookingId(bookingId);
+      setTimeout(() => {
+        setCopiedBookingId((current) => (current === bookingId ? null : current));
+      }, 2000);
+    } catch {
+      window.prompt("Copy waiver link:", url);
+    }
+  }
 
   async function fetchWaivers() {
     const response = await fetch("/api/admin/waivers");
@@ -109,6 +123,7 @@ export default function AdminWaiversPage() {
               <th className="px-3 py-2 text-left font-semibold text-slate-900">Guests</th>
               <th className="px-3 py-2 text-left font-semibold text-slate-900">Waivers</th>
               <th className="px-3 py-2 text-left font-semibold text-slate-900">Status</th>
+              <th className="px-3 py-2 text-left font-semibold text-slate-900">Waiver Link</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -143,10 +158,32 @@ export default function AdminWaiversPage() {
                         {status.label}
                       </span>
                     </td>
+                    <td className="px-3 py-3">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          copyWaiverLink(row.id, row.waiver_token);
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                      >
+                        {copiedBookingId === row.id ? (
+                          <>
+                            <Check className="h-3.5 w-3.5 text-emerald-600" />
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3.5 w-3.5" />
+                            Copy link
+                          </>
+                        )}
+                      </button>
+                    </td>
                   </tr>
                   {isExpanded && (
                     <tr className="bg-slate-50/70">
-                      <td colSpan={8} className="px-4 py-4">
+                      <td colSpan={9} className="px-4 py-4">
                         {row.signers.length === 0 ? (
                           <p className="text-sm text-slate-500">No signed waivers yet for this booking.</p>
                         ) : (

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { isAdminAuthorized } from "@/lib/admin-auth";
+import { isWaiverAdminAuthorized } from "@/lib/admin-auth";
 
 type WaiverPdfRow = {
   pdf_data: Buffer | null;
@@ -10,7 +10,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  if (!(await isAdminAuthorized())) {
+  if (!(await isWaiverAdminAuthorized())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

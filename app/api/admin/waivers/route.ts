@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { isAdminAuthorized } from "@/lib/admin-auth";
+import { isWaiverAdminAuthorized } from "@/lib/admin-auth";
 
 type WaiverAdminRow = {
   booking_id: string;
@@ -49,7 +49,7 @@ type BookingResponse = {
 };
 
 export async function GET(request: NextRequest) {
-  if (!(await isAdminAuthorized())) {
+  if (!(await isWaiverAdminAuthorized())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
