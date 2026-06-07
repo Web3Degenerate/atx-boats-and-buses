@@ -1,4 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { buildMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = buildMetadata({
+  title: "Reservation Unavailable",
+  description: "This reservation cannot be processed online.",
+  path: "/booking/banned",
+  noIndex: true
+});
 
 export default function BookingBannedPage() {
   return (

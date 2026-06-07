@@ -1,5 +1,14 @@
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import WaiverSigningForm from "@/components/waiver/WaiverSigningForm";
+import { buildMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = buildMetadata({
+  title: "Rental Waiver",
+  description: "Private ATX Boats & Buses waiver signing page.",
+  path: "/waiver",
+  noIndex: true
+});
 
 type WaiverPageProps = {
   params: {

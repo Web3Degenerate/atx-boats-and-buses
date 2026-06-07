@@ -1,13 +1,14 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Anchor, Bus } from "lucide-react";
 import * as motion from "motion/react-client";
+import JsonLd from "@/components/seo/JsonLd";
+import { buildLocalBusinessJsonLd, buildWebsiteJsonLd } from "@/lib/seo";
 
 export default function HomePage() {
   return (
     <>
+      <JsonLd data={[buildWebsiteJsonLd(), buildLocalBusinessJsonLd()]} />
       <section className="relative flex min-h-[60vh] items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-neutral-900">
           <div className="absolute inset-0 z-10 bg-gradient-to-b from-neutral-950 via-transparent to-neutral-950" />
@@ -25,7 +26,9 @@ export default function HomePage() {
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.8 }}
           >
-            <h1 className="mb-6 text-5xl font-bold tracking-tighter md:text-7xl lg:text-8xl">Explore Austin in Style</h1>
+            <h1 className="mb-6 text-5xl font-bold tracking-tighter md:text-7xl lg:text-8xl">
+              Austin Boat Rentals & Party Bus Rentals
+            </h1>
           </motion.div>
           <motion.div
             initial={{ y: 20, opacity: 0 }}
@@ -33,7 +36,8 @@ export default function HomePage() {
             transition={{ delay: 0.3, duration: 0.8 }}
           >
             <p className="mx-auto mb-10 max-w-2xl text-lg text-neutral-400 md:text-xl">
-              Premium boat and bus rentals for unforgettable experiences on the water and the road.
+              Premium boat, yacht, party bus, and executive shuttle rentals for Lake Austin, Lake Travis,
+              weddings, corporate events, birthdays, and bachelor or bachelorette parties.
             </p>
           </motion.div>
           <motion.div
@@ -90,8 +94,8 @@ export default function HomePage() {
                 </div>
                 <h2 className="mb-4 text-4xl font-bold tracking-tighter lg:text-5xl">Rent a Bus</h2>
                 <p className="mb-8 max-w-sm text-neutral-300">
-                  Experience luxury group travel with our premium executive shuttles and coaches. Perfect for corporate events,
-                  weddings, and city tours.
+                  Experience luxury group travel around Austin with premium executive shuttles and coaches for
+                  corporate events, weddings, city tours, concerts, and private celebrations.
                 </p>
                 <span className="inline-flex w-fit items-center gap-3 rounded-full bg-white px-6 py-3 font-semibold text-black transition-colors hover:bg-neutral-200">
                   <Bus className="h-4 w-4" />
@@ -130,7 +134,8 @@ export default function HomePage() {
                 </div>
                 <h2 className="mb-4 text-4xl font-bold tracking-tighter lg:text-5xl">Rent a Boat</h2>
                 <p className="mb-8 max-w-sm text-neutral-300">
-                  Hit the water in style. From cobalt boats to luxury yachts, we have the perfect vessel for your lake day.
+                  Hit Lake Austin or Lake Travis in style. From Cobalt boats to luxury yachts, we have the right
+                  vessel for lake days, birthdays, sunset cruises, and bachelorette weekends.
                 </p>
                 <span className="inline-flex w-fit items-center gap-3 rounded-full bg-white px-6 py-3 font-semibold text-black transition-colors hover:bg-neutral-200">
                   <Anchor className="h-4 w-4" />

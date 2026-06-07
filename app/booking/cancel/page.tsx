@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { buildMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildMetadata({
   title: "Booking Cancelled",
-  description: "Your booking was not completed."
-};
+  description: "Your booking was not completed.",
+  path: "/booking/cancel",
+  noIndex: true
+});
 
 export default function BookingCancelPage() {
   return (

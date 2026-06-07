@@ -1,9 +1,13 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import UnifiedBookingForm from "@/components/booking/UnifiedBookingForm";
+import JsonLd from "@/components/seo/JsonLd";
 import Container from "@/components/ui/Container";
 import ImageCarouselAnimated from "@/components/vehicles/ImageCarouselAnimated";
-import UnifiedBookingForm from "@/components/booking/UnifiedBookingForm";
-import { vehicles as staticVehicles } from "@/data/vehicles";
 import { query } from "@/lib/db";
-import { Vehicle } from "@/types";
+import { buildBreadcrumbJsonLd, buildMetadata, buildVehicleServiceJsonLd } from "@/lib/seo";
+import { getVehicleBySlug } from "@/lib/vehicles";
+import type { Vehicle } from "@/types";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +32,7 @@ const PREVOST_IMAGES = [
   "/images/Luxury_Bus_1/Provost_mar_15_2026/18bus-18.webp",
   "/images/Luxury_Bus_1/Provost_mar_15_2026/19bus-19.webp",
   "/images/Luxury_Bus_1/Provost_mar_15_2026/20bus-20.webp",
-  "/images/Luxury_Bus_1/Provost_mar_15_2026/21bus-21.webp",
+  "/images/Luxury_Bus_1/Provost_mar_15_2026/21bus-21.webp"
 ];
 
 const EXECUTIVE_SHUTTLE_IMAGES = [
@@ -54,7 +58,7 @@ const EXECUTIVE_SHUTTLE_IMAGES = [
   "/images/36-foot-slider-images/IMG_1965-card.webp",
   "/images/36-foot-slider-images/IMG_1966-card.webp",
   "/images/36-foot-slider-images/IMG_1967-card.webp",
-  "/images/36-foot-slider-images/IMG_1968-card.webp",
+  "/images/36-foot-slider-images/IMG_1968-card.webp"
 ];
 
 const COBALT_IMAGES = [
@@ -64,37 +68,8 @@ const COBALT_IMAGES = [
   "/images/cobalt-boat/cobalt4.jpeg",
   "/images/cobalt-boat/cobalt5.jpeg",
   "/images/cobalt-boat/cobalt6.jpeg",
-  "/images/cobalt-boat/cobalt7.jpeg",
+  "/images/cobalt-boat/cobalt7.jpeg"
 ];
-
-type VehicleRow = {
-  id: string;
-  name: string;
-  slug: string;
-  type: Vehicle["type"];
-  description: string;
-  capacity: number;
-  price_per_hour: number;
-  minimum_hours: number;
-  maximum_hours: number;
-  fuel_charge_percent: number;
-  optional_charge_label: string;
-  features: string[] | string;
-  images: string[] | string;
-};
-
-function parseJsonArray(value: string[] | string): string[] {
-  if (Array.isArray(value)) {
-    return value;
-  }
-
-  try {
-    const parsed = JSON.parse(value) as unknown;
-    return Array.isArray(parsed) ? (parsed as string[]) : [];
-  } catch {
-    return [];
-  }
-}
 
 type PageProps = {
   params: {
@@ -102,62 +77,82 @@ type PageProps = {
   };
 };
 
-export default async function VehicleDetailPage({ params }: PageProps) {
-  const result = await query<VehicleRow>(
-    `
-      SELECT id, name, slug, type, description, capacity, price_per_hour, minimum_hours, maximum_hours, fuel_charge_percent, optional_charge_label, features, images
-      FROM vehicles
-      WHERE slug = $1
-      LIMIT 1
-    `,
-    [params.slug]
-  );
+type CouponRow = {
+  id: string;
+  code: string;
+  discount_percent: number;
+  valid_from: string;
+  valid_to: string;
+  promo_text: string | null;
+};
 
-  const row = result.rows[0];
+function getCategoryPath(vehicle: Vehicle): string {
+  return vehicle.type === "party-bus" ? "/buses" : "/boats";
+}
 
-  if (!row) {
-    return (
-      <section className="py-12">
-        <Container>
-          <p className="text-sm text-red-400">Vehicle not found.</p>
-        </Container>
-      </section>
-    );
+function getCategoryName(vehicle: Vehicle): string {
+  return vehicle.type === "party-bus" ? "Bus Rentals" : "Boat Rentals";
+}
+
+function getCarouselImages(vehicle: Vehicle): string[] {
+  if (vehicle.slug === "prevost-tour-bus") {
+    return PREVOST_IMAGES;
   }
 
-  const staticVehicle = staticVehicles.find((item) => item.slug === row.slug);
-  const vehicle: Vehicle = {
-    id: staticVehicle?.id || row.slug,
-    name: row.name,
-    slug: row.slug,
-    type: row.type,
-    description: row.description,
-    capacity: row.capacity,
-    pricePerHour: row.price_per_hour / 100,
-    minimumHours: row.minimum_hours,
-    maximumHours: row.maximum_hours,
-    fuelChargePercent: row.fuel_charge_percent,
-    optionalChargeLabel: row.optional_charge_label || staticVehicle?.optionalChargeLabel || "Fuel Charge",
-    features: parseJsonArray(row.features),
-    images: parseJsonArray(row.images)
-  };
+  if (vehicle.slug === "executive-shuttle") {
+    return EXECUTIVE_SHUTTLE_IMAGES;
+  }
 
-  const dbVehicleId = row.id;
-  const couponResult = await query<{
-    id: string;
-    code: string;
-    discount_percent: number;
-    valid_from: string;
-    valid_to: string;
-    promo_text: string | null;
-  }>(
+  if (vehicle.slug === "cobalt-boat") {
+    return COBALT_IMAGES;
+  }
+
+  return vehicle.images;
+}
+
+function getBestUseCases(vehicle: Vehicle): string {
+  if (vehicle.type === "party-bus") {
+    return "weddings, corporate transportation, bachelor and bachelorette parties, concerts, game days, wine tours, and Austin city events";
+  }
+
+  return "Lake Austin and Lake Travis birthdays, bachelor and bachelorette parties, sunset cruises, corporate lake days, and private celebrations";
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const vehicle = await getVehicleBySlug(params.slug);
+
+  if (!vehicle) {
+    return buildMetadata({
+      title: "Vehicle Not Found",
+      description: "This ATX Boats & Buses rental vehicle could not be found.",
+      path: `/vehicles/${params.slug}`,
+      noIndex: true
+    });
+  }
+
+  return buildMetadata({
+    title: `${vehicle.name} Rental in Austin`,
+    description: `${vehicle.description} Book ${vehicle.name} for Austin events, private groups, and premium transportation or lake experiences.`,
+    path: `/vehicles/${vehicle.slug}`,
+    image: getCarouselImages(vehicle)[0] || "/images/boat-slider-image-default.webp"
+  });
+}
+
+export default async function VehicleDetailPage({ params }: PageProps) {
+  const vehicle = await getVehicleBySlug(params.slug);
+
+  if (!vehicle) {
+    notFound();
+  }
+
+  const couponResult = await query<CouponRow>(
     `SELECT id, code, discount_percent, valid_from::text, valid_to::text, promo_text FROM coupons
      WHERE auto_apply = TRUE AND active = TRUE
        AND valid_from <= CURRENT_DATE AND valid_to >= CURRENT_DATE
        AND (vehicle_id = $1 OR vehicle_id IS NULL)
      ORDER BY (vehicle_id IS NOT NULL) DESC, created_at DESC
      LIMIT 1`,
-    [dbVehicleId]
+    [vehicle.dbId]
   );
   const autoApplyCoupon = couponResult.rows[0]
     ? {
@@ -171,44 +166,74 @@ export default async function VehicleDetailPage({ params }: PageProps) {
     : null;
 
   return (
-    <section className="py-12">
-      <Container className="space-y-8">
-        <ImageCarouselAnimated
-          images={
-            vehicle.slug === "prevost-tour-bus"
-              ? PREVOST_IMAGES
-              : vehicle.slug === "executive-shuttle"
-                ? EXECUTIVE_SHUTTLE_IMAGES
-                : vehicle.slug === "cobalt-boat"
-                  ? COBALT_IMAGES
-                  : vehicle.images
-          }
-          alt={vehicle.name}
-        />
+    <>
+      <JsonLd
+        data={[
+          buildBreadcrumbJsonLd([
+            { name: "Home", path: "/" },
+            { name: getCategoryName(vehicle), path: getCategoryPath(vehicle) },
+            { name: vehicle.name, path: `/vehicles/${vehicle.slug}` }
+          ]),
+          buildVehicleServiceJsonLd(vehicle)
+        ]}
+      />
+      <section className="py-12">
+        <Container className="space-y-8">
+          <ImageCarouselAnimated images={getCarouselImages(vehicle)} alt={vehicle.name} />
 
-        <div className="space-y-4">
-          <h1 className="text-3xl font-bold text-white">{vehicle.name}</h1>
-          <p className="text-neutral-300">{vehicle.description}</p>
-          <p className="text-neutral-200">
-            <span className="font-semibold">Capacity:</span> Up to {vehicle.capacity} guests
-          </p>
-          <p className="text-xl font-semibold text-emerald-400">${vehicle.pricePerHour} / hour</p>
-          {autoApplyCoupon?.promoText && (
-            <p className="text-sm font-medium text-emerald-400">{autoApplyCoupon.promoText}</p>
-          )}
+          <div className="space-y-4">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">
+              {vehicle.type === "party-bus" ? "Austin bus rental" : "Austin boat rental"}
+            </p>
+            <h1 className="text-3xl font-bold text-white">{vehicle.name}</h1>
+            <p className="text-neutral-300">{vehicle.description}</p>
+            <p className="text-neutral-200">
+              <span className="font-semibold">Capacity:</span> Up to {vehicle.capacity} guests
+            </p>
+            <p className="text-neutral-200">
+              <span className="font-semibold">Minimum rental:</span> {vehicle.minimumHours} hours
+            </p>
+            <p className="text-xl font-semibold text-emerald-400">${vehicle.pricePerHour} / hour</p>
+            {autoApplyCoupon?.promoText && (
+              <p className="text-sm font-medium text-emerald-400">{autoApplyCoupon.promoText}</p>
+            )}
 
-          <div>
-            <h2 className="mb-2 text-lg font-semibold text-white">Features</h2>
-            <ul className="list-inside list-disc space-y-1 text-neutral-300">
-              {vehicle.features.map((feature) => (
-                <li key={feature}>{feature}</li>
-              ))}
-            </ul>
+            <div>
+              <h2 className="mb-2 text-lg font-semibold text-white">Features</h2>
+              <ul className="list-inside list-disc space-y-1 text-neutral-300">
+                {vehicle.features.map((feature) => (
+                  <li key={feature}>{feature}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              <article className="rounded-2xl border border-white/10 bg-neutral-900 p-5">
+                <h2 className="text-lg font-semibold text-white">What is {vehicle.name} best for?</h2>
+                <p className="mt-2 text-sm leading-6 text-neutral-300">
+                  {vehicle.name} is a strong fit for {getBestUseCases(vehicle)}.
+                </p>
+              </article>
+              <article className="rounded-2xl border border-white/10 bg-neutral-900 p-5">
+                <h2 className="text-lg font-semibold text-white">How many guests can it fit?</h2>
+                <p className="mt-2 text-sm leading-6 text-neutral-300">
+                  This rental accommodates up to {vehicle.capacity} guests. For mixed age groups or special
+                  event needs, confirm the final guest count before booking.
+                </p>
+              </article>
+              <article className="rounded-2xl border border-white/10 bg-neutral-900 p-5">
+                <h2 className="text-lg font-semibold text-white">Where does it serve?</h2>
+                <p className="mt-2 text-sm leading-6 text-neutral-300">
+                  ATX Boats & Buses serves Austin, Lake Austin, Lake Travis, and Central Texas event groups
+                  depending on the selected rental and trip details.
+                </p>
+              </article>
+            </div>
+
+            <UnifiedBookingForm vehicle={vehicle} autoApplyCoupon={autoApplyCoupon} />
           </div>
-
-          <UnifiedBookingForm vehicle={vehicle} autoApplyCoupon={autoApplyCoupon} />
-        </div>
-      </Container>
-    </section>
+        </Container>
+      </section>
+    </>
   );
 }

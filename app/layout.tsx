@@ -4,16 +4,23 @@ import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import SessionProvider from "@/components/providers/SessionProvider";
+import { buildMetadata } from "@/lib/seo";
+import { siteConfig } from "@/lib/site-config";
 
 const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
 
 export const metadata: Metadata = {
+  ...buildMetadata({
+    title: "ATX Boats & Buses | Austin Boat Rentals & Party Bus Rentals",
+    description: siteConfig.description,
+    path: "/",
+    image: "/images/boat-slider-image-default.webp"
+  }),
+  metadataBase: new URL(siteConfig.siteUrl),
   title: {
-    default: "ATX Boats & Buses | Austin Rentals",
+    default: "ATX Boats & Buses | Austin Boat Rentals & Party Bus Rentals",
     template: "%s | ATX Boats & Buses"
   },
-  description:
-    "Premium party boat and party bus rentals in Austin, TX. Perfect for birthdays, bachelorette parties, corporate events, and more. Book online today.",
   keywords: [
     "party bus Austin",
     "boat rental Austin",
@@ -21,14 +28,6 @@ export const metadata: Metadata = {
     "Austin yacht rental",
     "bachelorette party Austin"
   ],
-  openGraph: {
-    title: "ATX Boats & Buses | Austin Rentals",
-    description: "Premium party boat and party bus rentals in Austin, TX. Book online today.",
-    url: "https://atxboatsandbuses.com",
-    siteName: "ATX Boats & Buses",
-    locale: "en_US",
-    type: "website"
-  },
   icons: {
     icon: "/images/favicon.png"
   },

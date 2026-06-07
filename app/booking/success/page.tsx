@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { buildMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildMetadata({
   title: "Booking Request Received",
-  description: "Your booking request has been received. We will confirm your reservation shortly."
-};
+  description: "Your booking request has been received. We will confirm your reservation shortly.",
+  path: "/booking/success",
+  noIndex: true
+});
 
 export default function BookingSuccessPage() {
   return (
