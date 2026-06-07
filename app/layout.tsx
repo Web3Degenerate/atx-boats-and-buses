@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import SessionProvider from "@/components/providers/SessionProvider";
+
+const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
 
 export const metadata: Metadata = {
   title: {
@@ -28,7 +31,8 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: "/images/favicon.png"
-  }
+  },
+  other: adsenseClientId ? { "google-adsense-account": adsenseClientId } : undefined
 };
 
 export default function RootLayout({
@@ -39,6 +43,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-neutral-950 text-white font-sans">
+        {adsenseClientId && (
+          <Script
+            id="adsense-loader"
+            async
+            strategy="afterInteractive"
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClientId}`}
+            crossOrigin="anonymous"
+          />
+        )}
         <SessionProvider>
           <Navbar />
           {children}

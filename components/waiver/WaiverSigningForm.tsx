@@ -2,6 +2,10 @@
 
 import { FormEvent, useMemo, useRef, useState } from "react";
 import SignatureCanvas from "react-signature-canvas";
+import AdSlot from "@/components/ads/AdSlot";
+
+const ADSENSE_WAIVER_TOP_SLOT = process.env.NEXT_PUBLIC_ADSENSE_WAIVER_TOP_SLOT;
+const ADSENSE_WAIVER_MID_SLOT = process.env.NEXT_PUBLIC_ADSENSE_WAIVER_MID_SLOT;
 
 type WaiverSigningFormProps = {
   token: string;
@@ -401,6 +405,12 @@ export default function WaiverSigningForm({ token, waiver }: WaiverSigningFormPr
           </div>
         </section>
 
+        {ADSENSE_WAIVER_TOP_SLOT && (
+          <aside aria-label="Sponsored" className="overflow-hidden rounded-3xl border border-white/10 bg-neutral-900 p-3">
+            <AdSlot slot={ADSENSE_WAIVER_TOP_SLOT} />
+          </aside>
+        )}
+
         <section className="rounded-3xl border border-white/10 bg-neutral-900 p-6">
           <div className="flex flex-col gap-3 border-b border-white/10 pb-4 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-2xl font-semibold text-white">Waiver Agreement</h2>
@@ -413,6 +423,12 @@ export default function WaiverSigningForm({ token, waiver }: WaiverSigningFormPr
             dangerouslySetInnerHTML={{ __html: waiver.body }}
           />
         </section>
+
+        {ADSENSE_WAIVER_MID_SLOT && (
+          <aside aria-label="Sponsored" className="overflow-hidden rounded-3xl border border-white/10 bg-neutral-900 p-3">
+            <AdSlot slot={ADSENSE_WAIVER_MID_SLOT} />
+          </aside>
+        )}
 
         <section className="rounded-3xl border border-white/10 bg-neutral-900 p-6">
           <p className="mb-6 text-center text-xl font-bold text-white">
