@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import CalendarPicker from "@/components/booking/CalendarPicker";
 import TimeSlotGrid from "@/components/booking/TimeSlotGrid";
+import { calculateSalesTaxCents, centsToDollars, dollarsToCents, SALES_TAX_PERCENT_LABEL } from "@/lib/pricing";
 import { TimeSlot, Vehicle } from "@/types";
 
 type UnifiedBookingFormProps = {
@@ -182,20 +183,22 @@ export default function UnifiedBookingForm({ vehicle, autoApplyCoupon }: Unified
     return differenceHours(toDateTime(pickupDate, pickupTime), toDateTime(returnDate, returnTime));
   }, [pickupDate, pickupTime, returnDate, returnTime]);
 
-  const basePrice = selectedHours * vehicle.pricePerHour;
-  const fuelCharge = basePrice * (vehicle.fuelChargePercent / 100);
-  const totalPrice = basePrice + fuelCharge;
+  const basePriceCents = dollarsToCents(selectedHours * vehicle.pricePerHour);
+  const fuelChargeCents = Math.round(basePriceCents * (vehicle.fuelChargePercent / 100));
+  const rentalSubtotalCents = basePriceCents + fuelChargeCents;
   const optionalChargeLabel = vehicle.optionalChargeLabel || "Fuel Charge";
-  const discountedTotal = appliedCoupon
-    ? Math.round(totalPrice * (1 - appliedCoupon.discountPercent / 100))
-    : totalPrice;
-  const discountAmount = totalPrice - discountedTotal;
+  const discountedRentalSubtotalCents = appliedCoupon
+    ? Math.round(rentalSubtotalCents * (1 - appliedCoupon.discountPercent / 100))
+    : rentalSubtotalCents;
+  const discountAmountCents = rentalSubtotalCents - discountedRentalSubtotalCents;
+  const salesTaxCents = calculateSalesTaxCents(discountedRentalSubtotalCents);
+  const totalPriceCents = discountedRentalSubtotalCents + salesTaxCents;
 
   const daysUntilBooking = pickupDate
     ? Math.floor((new Date(pickupDate).getTime() - new Date(new Date().toDateString()).getTime()) / (1000 * 60 * 60 * 24))
     : null;
   const showDeposit = daysUntilBooking !== null && daysUntilBooking > 2;
-  const depositAmount = Math.round(discountedTotal * 0.2);
+  const depositAmountCents = Math.round(totalPriceCents * 0.2);
   const isAutoApplied = Boolean(
     autoApplyCoupon &&
     appliedCoupon?.id === autoApplyCoupon.id
@@ -594,16 +597,17 @@ export default function UnifiedBookingForm({ vehicle, autoApplyCoupon }: Unified
             <h3 className="text-lg font-semibold text-white">Price Summary</h3>
             <div className="mt-2 space-y-1 text-sm text-neutral-300">
               <p>Hours: {selectedHours || 0}</p>
-              <p>Base: {formatCurrency(basePrice)}</p>
-              {vehicle.fuelChargePercent > 0 && <p>{optionalChargeLabel}: {formatCurrency(fuelCharge)}</p>}
+              <p>Base: {formatCurrency(centsToDollars(basePriceCents))}</p>
+              {vehicle.fuelChargePercent > 0 && <p>{optionalChargeLabel}: {formatCurrency(centsToDollars(fuelChargeCents))}</p>}
               {appliedCoupon && (
                 <p className="text-emerald-400">
-                  Discount (-{appliedCoupon.discountPercent}%): -{formatCurrency(discountAmount)}
+                  Discount (-{appliedCoupon.discountPercent}%): -{formatCurrency(centsToDollars(discountAmountCents))}
                 </p>
               )}
-              <p className="pt-1 text-base font-semibold text-white">Total: {formatCurrency(discountedTotal)}</p>
+              <p>Sales Tax ({SALES_TAX_PERCENT_LABEL}): {formatCurrency(centsToDollars(salesTaxCents))}</p>
+              <p className="pt-1 text-base font-semibold text-white">Total: {formatCurrency(centsToDollars(totalPriceCents))}</p>
               {showDeposit && (
-                <p className="pt-1 text-base font-semibold text-emerald-400">20% Deposit Due Today: {formatCurrency(depositAmount)}</p>
+                <p className="pt-1 text-base font-semibold text-emerald-400">20% Deposit Due Today: {formatCurrency(centsToDollars(depositAmountCents))}</p>
               )}
             </div>
             <div className="mt-4 space-y-2">
