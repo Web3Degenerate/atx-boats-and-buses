@@ -6,7 +6,7 @@ import { buildLocalBusinessJsonLd, buildMetadata } from "@/lib/seo";
 export const metadata: Metadata = buildMetadata({
   title: "Contact ATX Boats & Buses",
   description:
-    "Contact ATX Boats & Buses to plan Austin boat rentals, Lake Austin and Lake Travis trips, party bus rentals, and executive shuttle transportation.",
+    "Contact ATX Boats & Buses to plan Austin corporate boat charters, Lake Austin and Lake Travis executive events, executive bus rentals, and corporate group transportation.",
   path: "/contact"
 });
 

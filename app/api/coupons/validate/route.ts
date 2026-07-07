@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { vehicles } from "@/data/vehicles";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,10 @@ type CouponRow = {
 };
 
 export async function POST(request: NextRequest) {
+  if (isRateLimited(`coupon-validate:${getClientIp(request)}`, 15, 5 * 60 * 1000)) {
+    return NextResponse.json({ error: "Too many attempts. Please try again later." }, { status: 429 });
+  }
+
   const body = (await request.json()) as { code?: string; vehicleId?: string | null };
   const code = body.code?.trim();
 

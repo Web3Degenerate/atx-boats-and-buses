@@ -15,6 +15,11 @@ type BreadcrumbItem = {
   path: string;
 };
 
+export type FaqItem = {
+  question: string;
+  answer: string;
+};
+
 type JsonLdObject = Record<string, unknown>;
 
 export function absoluteUrl(path = "/"): string {
@@ -91,6 +96,9 @@ export function buildLocalBusinessJsonLd(): JsonLdObject {
     url: siteConfig.siteUrl,
     description: siteConfig.description,
     email: siteConfig.email,
+    image: absoluteUrl("/images/logo.png"),
+    logo: absoluteUrl("/images/logo.png"),
+    ...(siteConfig.priceRange ? { priceRange: siteConfig.priceRange } : {}),
     areaServed: siteConfig.serviceAreas.map((area) => ({
       "@type": "Place",
       name: area
@@ -116,6 +124,21 @@ export function buildLocalBusinessJsonLd(): JsonLdObject {
       : {}),
     ...(siteConfig.openingHours ? { openingHours: siteConfig.openingHours } : {}),
     ...(siteConfig.sameAs ? { sameAs: siteConfig.sameAs } : {})
+  };
+}
+
+export function buildFaqJsonLd(items: FaqItem[]): JsonLdObject {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: items.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.answer
+      }
+    }))
   };
 }
 
@@ -148,7 +171,7 @@ export function buildVehicleItemListJsonLd(name: string, vehicles: Vehicle[], pa
 }
 
 export function buildVehicleServiceJsonLd(vehicle: Vehicle): JsonLdObject {
-  const serviceType = vehicle.type === "party-bus" ? "Party bus rental" : "Boat rental";
+  const serviceType = vehicle.type === "party-bus" ? "Executive bus rental" : "Boat charter";
 
   return {
     "@context": "https://schema.org",

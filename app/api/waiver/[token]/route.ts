@@ -12,8 +12,6 @@ type WaiverLookupRow = {
   trip_date: string;
   template_body: string;
   customer_name: string;
-  customer_email: string;
-  customer_phone: string;
   date: string;
   start_time: string;
   end_time: string;
@@ -41,8 +39,6 @@ export async function GET(
         wl.trip_date,
         wt.body AS template_body,
         b.customer_name,
-        b.customer_email,
-        b.customer_phone,
         b.date,
         b.start_time::text,
         b.end_time::text,
@@ -73,8 +69,6 @@ export async function GET(
     booking: {
       id: waiver.booking_id,
       customerName: waiver.customer_name,
-      customerEmail: waiver.customer_email,
-      customerPhone: waiver.customer_phone,
       date: waiver.date,
       startTime: waiver.start_time,
       endTime: waiver.end_time,

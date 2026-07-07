@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { vehicles } from "@/data/vehicles";
 import { query } from "@/lib/db";
+import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { stripe } from "@/lib/stripe";
 
 type CheckoutRequestBody = {
@@ -39,6 +40,10 @@ function toMinutes(time: string): number {
 
 export async function POST(request: NextRequest) {
   try {
+    if (isRateLimited(`checkout:${getClientIp(request)}`, 10, 10 * 60 * 1000)) {
+      return NextResponse.json({ error: "Too many booking attempts. Please try again later." }, { status: 429 });
+    }
+
     const body = (await request.json()) as CheckoutRequestBody;
 
     const {

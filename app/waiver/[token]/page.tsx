@@ -21,8 +21,6 @@ type WaiverData = {
   booking: {
     id: string;
     customerName: string;
-    customerEmail: string;
-    customerPhone: string;
     date: string;
     startTime: string;
     endTime: string;

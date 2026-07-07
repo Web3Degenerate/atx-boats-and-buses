@@ -11,22 +11,25 @@ const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
 
 export const metadata: Metadata = {
   ...buildMetadata({
-    title: "ATX Boats & Buses | Austin Boat Rentals & Party Bus Rentals",
+    title: "ATX Boats & Buses | Austin Corporate Boat Charters & Executive Bus Rentals",
     description: siteConfig.description,
     path: "/",
     image: "/images/boat-slider-image-default.webp"
   }),
   metadataBase: new URL(siteConfig.siteUrl),
   title: {
-    default: "ATX Boats & Buses | Austin Boat Rentals & Party Bus Rentals",
+    default: "ATX Boats & Buses | Austin Corporate Boat Charters & Executive Bus Rentals",
     template: "%s | ATX Boats & Buses"
   },
   keywords: [
-    "party bus Austin",
-    "boat rental Austin",
-    "ATX party bus",
-    "Austin yacht rental",
-    "bachelorette party Austin"
+    "corporate boat charter Austin",
+    "executive bus rental Austin",
+    "client appreciation event Austin",
+    "corporate offsite transportation Austin",
+    "Lake Travis corporate events",
+    "Austin executive shuttle",
+    "corporate motorcoach Texas",
+    "executive bus Dallas Fort Worth San Antonio Houston"
   ],
   icons: {
     icon: "/images/favicon.png"

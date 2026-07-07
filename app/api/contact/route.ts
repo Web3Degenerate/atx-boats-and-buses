@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { getResend } from "@/lib/resend";
 
 type ContactBody = {
@@ -14,6 +15,10 @@ function isNonEmptyString(value: unknown): value is string {
 
 export async function POST(request: NextRequest) {
   try {
+    if (isRateLimited(`contact:${getClientIp(request)}`, 5, 10 * 60 * 1000)) {
+      return NextResponse.json({ error: "Too many messages. Please try again later." }, { status: 429 });
+    }
+
     const body = (await request.json()) as ContactBody;
     const { name, email, phone, message } = body;
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { query } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
 import { getResend } from "@/lib/resend";
@@ -41,11 +42,7 @@ async function markChargeFailed(bookingId: string) {
 }
 
 export async function GET(request: NextRequest) {
-  const secret = request.nextUrl.searchParams.get("secret");
-  const authHeader = request.headers.get("authorization");
-  const expectedHeader = `Bearer ${process.env.CRON_SECRET}`;
-
-  if (secret !== process.env.CRON_SECRET && authHeader !== expectedHeader) {
+  if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

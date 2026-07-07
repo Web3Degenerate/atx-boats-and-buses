@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Instagram, Facebook, Twitter } from "lucide-react";
+import { Instagram, Linkedin } from "lucide-react";
 
 export default function Footer() {
   return (
@@ -16,26 +16,25 @@ export default function Footer() {
             </div>
           </Link>
           <p className="mb-6 max-w-sm text-neutral-400">
-            Providing premium transportation and aquatic experiences in the heart of Texas.
+            Providing premium executive transportation and charter experiences in the heart of Texas.
           </p>
+          <p className="mb-6 text-sm text-neutral-500">Hours: 10am&ndash;5pm daily, or during scheduled charters.</p>
           <div className="flex items-center gap-4">
             <a
-              href="#"
+              href="https://www.instagram.com/alcazarvela/"
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 transition-colors hover:bg-white/5"
             >
               <Instagram className="h-4 w-4" />
             </a>
             <a
-              href="#"
+              href="https://www.linkedin.com/company/alcazarvela"
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 transition-colors hover:bg-white/5"
             >
-              <Facebook className="h-4 w-4" />
-            </a>
-            <a
-              href="#"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 transition-colors hover:bg-white/5"
-            >
-              <Twitter className="h-4 w-4" />
+              <Linkedin className="h-4 w-4" />
             </a>
           </div>
         </div>

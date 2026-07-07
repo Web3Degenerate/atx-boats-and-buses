@@ -20,6 +20,7 @@ export type SiteConfig = {
   services: string[];
   telephone?: string;
   email: string;
+  priceRange?: string;
   address?: SiteAddress;
   geo?: SiteGeo;
   openingHours?: string[];
@@ -31,18 +32,22 @@ export const siteConfig: SiteConfig = {
   businessName: "ATX Boats & Buses",
   shortName: "ATX Boats & Buses",
   description:
-    "Premium party boat, yacht, party bus, and executive shuttle rentals for Austin events on Lake Austin, Lake Travis, and across Central Texas.",
+    "Executive bus and private yacht charters for Austin corporate offsites, client appreciation events, and executive group transportation on Lake Austin, Lake Travis, and across Central Texas.",
   serviceAreas: ["Austin, TX", "Lake Austin", "Lake Travis", "Central Texas"],
   services: [
-    "Austin party bus rentals",
-    "Austin boat rentals",
-    "Lake Austin boat rentals",
-    "Lake Travis yacht charters",
+    "Corporate offsite transportation",
+    "Client appreciation event charters",
+    "Executive bus and motorcoach rentals",
+    "Private yacht and boat charters",
+    "Lake Travis executive boat charters",
+    "Lake Austin corporate boat rentals",
     "Executive shuttle rentals",
-    "Wedding transportation",
     "Corporate group transportation",
-    "Bachelor and bachelorette party transportation"
+    "Statewide executive motorcoach travel (Dallas, Fort Worth, San Antonio, Houston, Hill Country)"
   ],
   telephone: "+15127103801",
-  email: "info@atxboatsandbuses.com"
+  email: "info@atxboatsandbuses.com",
+  priceRange: "$250 - $700 per hour",
+  openingHours: ["Mo-Su 10:00-17:00"],
+  sameAs: ["https://www.instagram.com/alcazarvela/", "https://www.linkedin.com/company/alcazarvela"]
 };

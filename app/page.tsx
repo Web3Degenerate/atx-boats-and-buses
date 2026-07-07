@@ -14,7 +14,7 @@ export default function HomePage() {
           <div className="absolute inset-0 z-10 bg-gradient-to-b from-neutral-950 via-transparent to-neutral-950" />
           <Image
             src="/images/boat-slider-image-default.webp"
-            alt="Hero Background"
+            alt="Private boat cruising on Lake Austin at sunset with the ATX Boats & Buses rental fleet"
             fill
             className="object-cover opacity-30"
             priority
@@ -27,7 +27,7 @@ export default function HomePage() {
             transition={{ delay: 0.2, duration: 0.8 }}
           >
             <h1 className="mb-6 text-5xl font-bold tracking-tighter md:text-7xl lg:text-8xl">
-              Austin Boat Rentals & Party Bus Rentals
+              Austin Corporate Boat Charters & Executive Bus Rentals
             </h1>
           </motion.div>
           <motion.div
@@ -36,8 +36,9 @@ export default function HomePage() {
             transition={{ delay: 0.3, duration: 0.8 }}
           >
             <p className="mx-auto mb-10 max-w-2xl text-lg text-neutral-400 md:text-xl">
-              Premium boat, yacht, party bus, and executive shuttle rentals for Lake Austin, Lake Travis,
-              weddings, corporate events, birthdays, and bachelor or bachelorette parties.
+              Premium boat, yacht, and executive bus rentals for Austin corporate offsites, client
+              appreciation events, and executive group transportation on Lake Austin, Lake Travis, and
+              across Central Texas.
             </p>
           </motion.div>
           <motion.div
@@ -92,10 +93,11 @@ export default function HomePage() {
                   <div className="h-[1px] w-8 bg-white" />
                   <span className="text-xs font-medium uppercase tracking-[0.2em]">Premium Fleet</span>
                 </div>
-                <h2 className="mb-4 text-4xl font-bold tracking-tighter lg:text-5xl">Rent a Bus</h2>
+                <h2 className="mb-4 text-4xl font-bold tracking-tighter lg:text-5xl">Executive Bus Rentals</h2>
                 <p className="mb-8 max-w-sm text-neutral-300">
-                  Experience luxury group travel around Austin with premium executive shuttles and coaches for
-                  corporate events, weddings, city tours, concerts, and private celebrations.
+                  Experience premium group transportation around Austin with executive coaches and shuttles
+                  built for corporate offsites, client appreciation events, and executive travel across the
+                  city.
                 </p>
                 <span className="inline-flex w-fit items-center gap-3 rounded-full bg-white px-6 py-3 font-semibold text-black transition-colors hover:bg-neutral-200">
                   <Bus className="h-4 w-4" />
@@ -132,10 +134,11 @@ export default function HomePage() {
                   <div className="h-[1px] w-8 bg-white" />
                   <span className="text-xs font-medium uppercase tracking-[0.2em]">Lake Austin & Travis</span>
                 </div>
-                <h2 className="mb-4 text-4xl font-bold tracking-tighter lg:text-5xl">Rent a Boat</h2>
+                <h2 className="mb-4 text-4xl font-bold tracking-tighter lg:text-5xl">Private Boat Charters</h2>
                 <p className="mb-8 max-w-sm text-neutral-300">
-                  Hit Lake Austin or Lake Travis in style. From Cobalt boats to luxury yachts, we have the right
-                  vessel for lake days, birthdays, sunset cruises, and bachelorette weekends.
+                  Host your next corporate offsite or client appreciation event on Lake Austin or Lake Travis.
+                  From Cobalt boats to luxury yachts, we have the right vessel for executive outings and
+                  private company gatherings.
                 </p>
                 <span className="inline-flex w-fit items-center gap-3 rounded-full bg-white px-6 py-3 font-semibold text-black transition-colors hover:bg-neutral-200">
                   <Anchor className="h-4 w-4" />

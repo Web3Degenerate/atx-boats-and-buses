@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { query } from "@/lib/db";
 import { getResend } from "@/lib/resend";
 
@@ -61,10 +62,7 @@ async function sendReminder(row: ReminderRow) {
 }
 
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-  const expectedHeader = `Bearer ${process.env.CRON_SECRET}`;
-
-  if (!authHeader || authHeader !== expectedHeader) {
+  if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

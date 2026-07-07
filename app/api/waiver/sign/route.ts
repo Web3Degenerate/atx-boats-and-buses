@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { getResend } from "@/lib/resend";
 import { generateWaiverPDF } from "@/lib/waiver-pdf";
 
@@ -39,7 +40,16 @@ type WaiverSignRequest = {
 
 type WaiverLinkRow = {
   waiver_link_id: string;
+  guest_count: number;
+  booking_status: string;
 };
+
+type SignedCountRow = {
+  count: string;
+};
+
+const MAX_SIGNATURE_DATA_LENGTH = 500_000;
+const MAX_MINORS_PER_SUBMISSION = 20;
 
 type InsertedWaiverRow = {
   id: string;
@@ -83,6 +93,10 @@ function validateMinor(minor: MinorInput, index: number): string | null {
 
 export async function POST(request: NextRequest) {
   try {
+    if (isRateLimited(`waiver-sign:${getClientIp(request)}`, 20, 10 * 60 * 1000)) {
+      return NextResponse.json({ error: "Too many signing attempts. Please try again later." }, { status: 429 });
+    }
+
     const body = (await request.json()) as WaiverSignRequest;
 
     if (!body.token) {
@@ -94,7 +108,13 @@ export async function POST(request: NextRequest) {
     }
 
     const waiverLinkResult = await query<WaiverLinkRow>(
-      "SELECT id AS waiver_link_id FROM waiver_links WHERE token = $1 LIMIT 1",
+      `
+        SELECT wl.id AS waiver_link_id, wl.guest_count, b.status AS booking_status
+        FROM waiver_links wl
+        JOIN bookings b ON b.id = wl.booking_id
+        WHERE wl.token = $1
+        LIMIT 1
+      `,
       [body.token]
     );
 
@@ -102,6 +122,22 @@ export async function POST(request: NextRequest) {
 
     if (!waiverLink) {
       return NextResponse.json({ error: "Waiver link not found." }, { status: 404 });
+    }
+
+    if (waiverLink.booking_status !== "confirmed") {
+      return NextResponse.json({ error: "This waiver is no longer available for signing." }, { status: 403 });
+    }
+
+    const signedCountResult = await query<SignedCountRow>(
+      "SELECT COUNT(*)::text AS count FROM signed_waivers WHERE waiver_link_id = $1",
+      [waiverLink.waiver_link_id]
+    );
+
+    if (Number(signedCountResult.rows[0]?.count || 0) >= waiverLink.guest_count) {
+      return NextResponse.json(
+        { error: "All guest waivers for this booking have already been signed." },
+        { status: 409 }
+      );
     }
 
     if (!body.first_name?.trim()) {
@@ -134,6 +170,9 @@ export async function POST(request: NextRequest) {
     if (!body.signature_data?.trim()) {
       return NextResponse.json({ error: "Signature is required." }, { status: 400 });
     }
+    if (body.signature_data.length > MAX_SIGNATURE_DATA_LENGTH) {
+      return NextResponse.json({ error: "Signature image is too large." }, { status: 400 });
+    }
 
     let signerDateOfBirth = body.date_of_birth?.trim() || "";
 
@@ -147,6 +186,9 @@ export async function POST(request: NextRequest) {
     } else {
       if (!Array.isArray(body.minors) || body.minors.length === 0) {
         return NextResponse.json({ error: "At least one minor is required." }, { status: 400 });
+      }
+      if (body.minors.length > MAX_MINORS_PER_SUBMISSION) {
+        return NextResponse.json({ error: "Too many minors in a single submission." }, { status: 400 });
       }
       if (!body.date_of_birth?.trim()) {
         return NextResponse.json({ error: "Guardian date of birth is required." }, { status: 400 });
