@@ -1,84 +1,122 @@
-# Security Hardening + SEO/AEO Improvements
+# FAQ System (v1: DB-backed FAQ pages + admin editor; v2: keyword-driven content queue)
+
+Goal: every FAQ is a Google-indexable landing page targeting a real search phrase. Admin creates FAQs in the panel (TinyMCE, same pattern as email/waiver templates); each question gets its own URL (`/faq/<slug>`) that renders the target answer on top with all other FAQ cards below, plus a master `/faq` page linked from the footer.
+
+Key facts verified in the codebase:
+- FAQ cards are hardcoded arrays in `app/boats/page.tsx` / `app/buses/page.tsx`, already emitting `FAQPage` JSON-LD via `buildFaqJsonLd()` in `lib/seo.ts`.
+- Footer FAQ link (`components/layout/Footer.tsx`) is a dead `#` (Terms of Service too — out of scope).
+- Admin editor pattern to copy: `app/admin/email-templates/page.tsx` (TinyMCE via `@tinymce/tinymce-react`, `isAdminAuthorized()` API routes, raw `pg` queries).
+- Migrations are plain SQL files in `scripts/` (e.g. `waiver-migration.sql`), run manually against the DB.
+- `app/sitemap.ts` is static today (imports `data/vehicles`, not DB) — will become async to include FAQ slugs.
+
+## V1 Plan
+
+### Database
+- [x] `scripts/faq-migration.sql`: `faqs` table — `id UUID`, `slug TEXT UNIQUE`, `question TEXT`, `answer_html TEXT`, `category TEXT` (`boats` | `buses` | `general`), `sort_order INT`, `published BOOLEAN DEFAULT true`, timestamps. Seeded with the 8 unique existing FAQs (deposit + waiver questions deduped into `general`; computed pricing/capacity ones stay in code). **Migration already run against the DB** (idempotent: `IF NOT EXISTS` / `ON CONFLICT DO NOTHING`).
+
+### Lib
+- [x] `lib/faqs.ts`: `getPublishedFaqs(categories?)`, `getPublishedFaqBySlug(slug)`, `slugifyQuestion()`, and `stripHtml()` for JSON-LD (schema.org `Answer.text` gets plain text; the page renders the rich HTML).
+
+### Admin (copy email-templates pattern)
+- [x] `/api/admin/faqs` (GET list incl. unpublished, POST create) and `/api/admin/faqs/[id]` (PUT, DELETE), all behind `isAdminAuthorized()`; slug collisions return 409 with a clear message.
+- [x] `/admin/faqs` page: list rows with View/Edit/Delete; create/edit form — question (with hint to phrase it like a Google search), TinyMCE answer, category, sort order, publish toggle, slug auto-generated from the question until manually edited.
+- [x] "FAQs" nav link in `components/admin/AdminShell.tsx`.
+
+### Public pages
+- [x] `/faq` page (`app/faq/page.tsx`): published FAQs as cards grouped by category, `buildMetadata` + breadcrumb + `FAQPage` JSON-LD, `force-dynamic`, contact-us escape hatch.
+- [x] `/faq/[slug]` page: question as title tag + H1 + expanded answer on top, boats/buses CTAs, all other FAQ cards below linking to their own slugs, canonical to itself, `notFound()` for unknown/unpublished slugs.
+- [x] Footer FAQ link → `/faq`.
+- [x] `/boats` and `/buses`: DB FAQs (category + general) as linked cards via new shared `components/faq/FaqCard.tsx`; computed live-pricing FAQ (and bus capacity FAQ) kept in code; "See all frequently asked questions →" link added.
+- [x] `app/sitemap.ts`: async — adds `/faq` + every published `/faq/<slug>` (lastModified from `updated_at`), vehicle routes now from DB, static-file fallback if the DB is unreachable.
+
+### Verify
+- [x] `tsc --noEmit` clean, `next build` clean. In-browser (dev server against live DB): `/faq` groups all 8 FAQs by category with correct title/canonical; `/faq/how-do-deposits-and-payment-work` renders question as title+H1, answer-derived meta description, FAQPage schema with the featured question first (8 entries), 7 other cards below; `/boats` FAQPage schema leads with live DB pricing ($275 Cobalt) + 5 linked DB FAQs; `/buses` shows computed pricing/capacity + 5 DB FAQs; unknown slug → 404; sitemap lists all 8 FAQ URLs; zero console errors.
+
+## V2 Plan (keyword discovery → approval queue → AI drafts) — not started, design sketch
+
+1. **Keyword harvesting**: scheduled job expands seed phrases ("lake austin boat rental", "austin party bus", …) through Google Autocomplete (the unofficial `suggestqueries.google.com` endpoint — free, same data you see typing manually; fallback: manual paste box in admin). Dedupe against existing FAQ questions/slugs.
+2. **`content_suggestions` table**: `term`, `source`, `type` (`faq` | `article`), `status` (`suggested` → `approved` → `drafted` → `published` | `rejected`), `draft_html`.
+3. **`/admin/content-queue`**: review harvested terms; Approve triggers a draft-generation API route calling the Claude API (drafting is user-facing copy → sonnet-5 or opus-4.8 per model policy; harvesting/clustering is mechanical). Draft lands back in the queue for TinyMCE edit → Publish creates a `faqs` row (or a blog post).
+4. **Blog articles** need a `/blog` route + articles table — scope as v2.5 once the FAQ queue proves out.
+5. Cost/abuse guard: generation only on explicit admin click, never auto-publish.
+
+## Review (v1 — shipped in working tree, not yet committed)
+
+**What changed:** FAQs moved from hardcoded arrays into a `faqs` DB table managed at `/admin/faqs` (TinyMCE, same pattern as email templates). Every FAQ now has its own indexable landing page at `/faq/<slug>` — the question is the title tag and H1 with the answer on top, and all other FAQ cards render below, so a searcher clicking through from a long-tail query ("lake austin boat rental with captain" → a future captain-policy FAQ) lands directly on their answer. `/faq` is the master page (footer link fixed from `#`), `/boats` and `/buses` keep their FAQ sections but pull from the DB, and the sitemap now lists every FAQ URL plus DB-sourced vehicle slugs.
+
+**Why the split between DB and computed FAQs:** the pricing FAQ (both pages) and bus-capacity FAQ interpolate live vehicle prices/capacities from the DB; storing them as admin-typed text would silently go stale on the next price change, so they stay in code and merge into the cards + JSON-LD alongside the DB rows.
+
+**Notes:**
+- `faqs` migration is already applied to the DB (additive + idempotent), so deploy is just the code push. The 8 seeded FAQs match what was previously hardcoded — zero visible regression until new FAQs are added.
+- FAQ JSON-LD strips HTML for `Answer.text`; pages render the TinyMCE HTML directly (admin-authored, trusted).
+- New FAQs are live immediately at `/faq/<slug>` (pages are `force-dynamic`); Google picks them up via the sitemap.
+- V2 (autocomplete keyword harvesting → admin approval queue → Claude-drafted answers) is designed above, not started.
+
+---
+
+# Option B: Admin Approval Flow (+ critical pricing fix)
+
+Approved design: bookings become requests. Checkout places an auth hold (manual capture) instead of charging. Admin approves (capture + confirm + waiver link) or rejects (release hold, $0 fees) — from the dashboard or via a signed one-click review link sent to configurable notification recipients (email and/or SMS gateway addresses).
+
+Key schema facts verified against the live DB (read-only): `status` is enum `booking_status (pending, pending_approval, confirmed, cancelled)`; the overlap exclusion constraint only covers `('pending','confirmed')` — therefore held bookings use **`pending`** (not `pending_approval`), and no migration is needed. Availability queries already treat `pending` as blocking.
 
 ## Plan
 
-### 1. Cron auth hardening
-- [x] Create `lib/cron-auth.ts` with a header-only, timing-safe check that fails closed when `CRON_SECRET` is unset.
-- [x] Use it in `app/api/cron/charge-balances/route.ts` (removes the `?secret=` query-param path).
-- [x] Use it in `app/api/cron/waiver-reminders/route.ts`.
+### Core libs
+- [x] `lib/booking-approval.ts` (new): HMAC-signed, expiring (6-day) action token — sign/verify with `NEXTAUTH_SECRET`, fail closed, timing-safe compare. Single-use enforced by booking status (token dies once booking leaves `pending`).
+- [x] `lib/booking-actions.ts` (new): shared `approveBooking()` (capture PI → status `confirmed` → create waiver link → confirmation email w/ waiver) and `rejectBooking()` (pending → cancel PI/release hold; confirmed → refund deposit PI **and balance PI if already charged** — fixes the 80%-kept-on-cancellation bug). Also `sendBookingRequestAlerts()` reading recipients from `site_settings.booking_alert_recipients` (fallback `ADMIN_ALERT_EMAIL`). All booking dates cast `::text` (fixes raw JS-Date strings in emails).
 
-### 2. Waiver PII redaction
-- [x] Remove `customerEmail` / `customerPhone` from the `/api/waiver/[token]` GET response (UI only renders `customerName`).
-- [x] Update the `WaiverData` types in `app/waiver/[token]/page.tsx` and `components/waiver/WaiverSigningForm.tsx`.
+### Checkout (also fixes critical bug #1)
+- [x] Price/minimums/fuel/capacity now read from the **DB** (`getVehicleBySlug`) instead of stale `data/vehicles.ts` — the live DB already diverged (Cobalt overcharged $75/hr, Carver undercharged, fuel % wrong).
+- [x] Add server-side validation: date/time format, `guestCount <= capacity`, duration `<= maximumHours`.
+- [x] Truncate `notes` for Stripe's 500-char metadata limit.
+- [x] `payment_intent_data.capture_method: "manual"` — checkout now places a hold, not a charge.
 
-### 3. Waiver signing abuse guards
-- [x] In `app/api/waiver/sign/route.ts`: reject when the booking is not `confirmed`.
-- [x] Reject when signed count has already reached `guest_count`.
-- [x] Cap `signature_data` length (500k chars) and cap `minors` array size (20).
+### Webhook
+- [x] Insert bookings with status `pending`; send customer "request received" email; send admin alert(s) with review link. No waiver link/confirmation until approval.
+- [x] On overlap constraint violation (23P01): **auto-cancel the PI** (hold released, customer never charged) + notify customer and admin — previously required a manual refund.
 
-### 4. Security headers
-- [x] Add `headers()` to `next.config.js`: `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, HSTS, minimal `Permissions-Policy`.
+### Admin actions
+- [x] `approve`/`reject` routes become thin wrappers over `lib/booking-actions` (status gate: `pending`).
+- [x] `/api/booking-action` + `/booking-action` page: token-authenticated, login-free review page (booking summary + Approve/Decline forms with confirm step — safe against email-scanner prefetch since GET never mutates).
+- [x] Bookings tab: show status badge + deposit/hold amount; pending requests pinned on top with Approve/Decline buttons.
 
-### 5. Env hygiene
-- [x] `.env.example`: removed dead `ADMIN_PASSWORD`; added `CRON_SECRET`, `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `WAIVER_ONLY_ADMIN_EMAILS`, `ADMIN_ALERT_EMAIL`.
+### Notification recipients setting
+- [x] `/api/admin/notification-settings` (admin-only GET/POST) upserting `site_settings.booking_alert_recipients` (comma-separated; supports SMS gateways like `5125551234@vtext.com`).
+- [x] `/admin/notifications` page + nav link.
+- [x] Whitelist keys in the public `/api/settings` route so recipient emails/phones don't leak (it currently returns every `site_settings` row).
 
-### 6. SEO / AEO
-- [x] Add `buildFaqJsonLd()` + `FaqItem` type to `lib/seo.ts`.
-- [x] `/boats` and `/buses`: Q&A cards now render from a FAQ array (pricing answers built from live vehicle data), with payment/waiver Q&As added and matching `FAQPage` JSON-LD emitted.
-- [x] Vehicle pages: per-vehicle FAQ array (use cases, price, capacity, service area, deposit terms, waiver) rendered as cards + `FAQPage` JSON-LD.
-- [x] LocalBusiness schema enriched with `priceRange`, `image`, `logo` (via `lib/site-config.ts` + `lib/seo.ts`).
-- [x] Homepage hero alt text made descriptive.
+### Safety net
+- [x] Daily cron (inside charge-balances run): auto-cancel `pending` bookings older than 6 days (card auth holds expire at ~7) — release PI, mark cancelled, email customer + admin.
+- [x] `::text` date casts in cron email queries.
 
-### 7. Verify
-- [x] `npx tsc --noEmit` — clean, no errors.
+### Copy
+- [x] `/booking/success` page: "Booking Request Received" (hold placed, confirmation coming) instead of "Booking Confirmed!".
+
+### Verify
+- [x] `tsc --noEmit` + `next build`.
 
 ## Review
 
-**Security changes**
-- `lib/cron-auth.ts` (new): single `isAuthorizedCronRequest()` used by both cron routes. It returns unauthorized when `CRON_SECRET` is unset (previously an unset secret made `Authorization: Bearer undefined` a valid credential), only accepts the header (the old `?secret=` query param leaked the secret into request logs), and compares with `crypto.timingSafeEqual`.
-- `/api/waiver/[token]` no longer returns the booking customer's email and phone. The waiver link is shared with every guest, so anyone holding it could scrape the booker's contact info; the signing UI only ever displayed the name.
-- `/api/waiver/sign` now refuses to sign when the booking isn't `confirmed` (e.g. cancelled bookings), refuses once signatures reach the link's `guest_count` (previously unlimited — each extra signing generated and stored a PDF and sent an email to an arbitrary address), caps `signature_data` at 500k chars, and caps `minors` at 20 per submission.
-- `next.config.js` now sends `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Strict-Transport-Security`, and `Permissions-Policy` on every response.
-- `.env.example` now reflects the variables the code actually uses.
+**New flow:** checkout places a manual-capture authorization hold → webhook records the booking as `pending`, emails the customer a "request received" note, and alerts all configured recipients with a signed one-click review link → admin approves (hold captured, booking confirmed, waiver link created and emailed) or declines (hold released, $0 fees, customer notified) — from `/admin` or the token-authenticated `/booking-action` page. Unactioned requests auto-cancel at 6 days (before the ~7-day hold expiry) via the daily cron.
 
-**SEO/AEO changes**
-- New `buildFaqJsonLd()` emits `FAQPage` schema. On `/boats`, `/buses`, and each vehicle page, the visible Q&A cards and the JSON-LD render from the same array, so they can't drift apart. Pricing answers are composed from live vehicle data (DB-backed), not hardcoded copy. Added deposit/payment and waiver Q&As sourced from actual checkout behavior (20% deposit, auto-charge 2 days out, pay-in-full within 2 days).
-- LocalBusiness JSON-LD now includes `priceRange`, `image`, and `logo`.
-- Homepage hero image alt text is now descriptive instead of "Hero Background".
+**Also fixed in this pass (found during the bug hunt):**
+- Checkout now charges DB (admin-panel) pricing — it was charging from the stale static file, which had already diverged (Cobalt customers overcharged $75/hr, Carver undercharged with fuel % missing). Verified against a real production booking: a 4-hr Cobalt deposit of $280 = 20% of the static $350/hr, not the displayed $275/hr.
+- `total_price` was being stored as the Stripe session `amount_total`, which for deposit bookings is only the deposit — now stored as deposit + remaining.
+- Cancelling a fully-paid booking now refunds the balance payment intent too (previously only the deposit — customers lost the 80% balance).
+- Overlap-after-payment (exclusion constraint) now auto-releases the hold and notifies the customer instead of paging the admin for a manual refund; webhook returns 200 so Stripe doesn't retry-spam duplicate emails.
+- Server-side validation added at checkout: date/time format, guest count vs capacity, max hours; notes truncated to Stripe's metadata limit.
+- Email date formatting fixed (`::text` casts) in booking-action and cron emails.
+- Public `/api/settings` now whitelists keys instead of dumping the whole `site_settings` table.
 
-## Round 2 (follow-up suggestions, completed)
+**Verified:** `tsc --noEmit` clean, `next build` clean, and in-browser: invalid review tokens fail closed; a valid token (generated for a real confirmed booking, read-only) renders the summary with action buttons correctly suppressed for non-pending status.
 
-- [x] **Next.js upgraded 14.2.25 → 14.2.35** (patched release for the Dec 2025 security advisory; `eslint-config-next` matched). `tsc --noEmit` clean and `next build` succeeds.
-- [x] **Rate limiting**: new `lib/rate-limit.ts` — zero-dependency, in-memory fixed-window limiter keyed by client IP. Applied to `/api/contact` (5/10min), `/api/checkout` (10/10min), `/api/waiver/sign` (20/10min), `/api/coupons/validate` (15/5min); all return 429. Best-effort per serverless instance — stops bursts and naive scripts; upgrade to Vercel WAF or Upstash later if real abuse shows up.
-- [x] **CSP added** to `next.config.js`: `object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self' https://checkout.stripe.com`. Deliberately omits `script-src`/`style-src` so Next inline scripts, AdSense, and Stripe work without a nonce pipeline (a nonce-based `script-src` is the possible future tightening).
-- [x] **sameAs research**: web search found only similarly named competitors (ATX Boat Rentals, ATX Party Boats, Retro Boat Rentals) — NOT this business; adding those would attach the wrong entity to the schema, so nothing was added. The site footer's social icons are `href="#"` placeholders.
+**Deploy notes:**
+- The Stripe flow change is atomic with this deploy — no DB migration, no Stripe dashboard changes needed (manual capture is per-PaymentIntent).
+- After deploy, set booking alert recipients at `/admin/notifications` (falls back to `ADMIN_ALERT_EMAIL` until then).
+- End-to-end test recommended in Stripe test mode locally: `stripe listen --forward-to localhost:3000/api/webhooks/stripe`, complete a checkout with 4242…, confirm the pending booking + alert email + review-link approve path. Note: local `.env.local` currently points at the production DB — swap `DATABASE_URL` to a test DB before running write flows locally.
 
-## Round 3 (corporate/executive repositioning, completed)
-
-Goal: eliminate all "party bus" / "party boat" / bachelor(ette) positioning across user-facing copy and schema, replacing it with corporate offsite and client appreciation event messaging. No functional or database changes — the internal `type: "party-bus" | "party-boat"` discriminator was intentionally left alone since it's a backend/DB enum (tied to `waiver_templates.vehicle_type` in Postgres) that is never rendered to users; renaming it would require a schema migration, a separate and riskier change from a copy rewrite.
-
-- [x] Deleted `app/test1/` (leftover noindexed scaffold page with old "Party Buses" copy).
-- [x] `lib/site-config.ts`: rewrote `description` and `services` to lead with corporate offsites, client appreciation events, executive bus/boat charters, and statewide executive motorcoach travel; dropped wedding/bachelor(ette) language entirely.
-- [x] `lib/seo.ts`: `buildVehicleServiceJsonLd` now emits `serviceType: "Executive bus rental"` / `"Boat charter"` instead of "Party bus rental" / "Boat rental".
-- [x] `app/layout.tsx`: rewrote both the `buildMetadata` title and the `title.default` override (the second one was missed in the first pass and caught by a follow-up grep — it's what actually renders on every page without its own title) plus the `keywords` array, now targeting corporate/executive terms and statewide travel to Dallas, Fort Worth, San Antonio, Houston.
-- [x] `app/page.tsx`: homepage H1, hero paragraph, and both bus/boat feature-card headings and copy rewritten around corporate offsites and client appreciation events.
-- [x] `app/boats/page.tsx`: title, description, H1, intro, and all 6 FAQs rewritten to corporate/executive boat charter framing.
-- [x] `app/buses/page.tsx`: title, description, H1, intro, and FAQs rewritten to executive bus/motorcoach framing; added a new FAQ on statewide travel to Dallas, Fort Worth, San Antonio, Houston, and the Hill Country.
-- [x] `app/vehicles/[slug]/page.tsx`: `getBestUseCases()` and the metadata description rewritten per vehicle type, including statewide travel for buses.
-- [x] `app/contact/page.tsx`: meta description rewritten.
-- [x] `data/vehicles.ts`: all four vehicle descriptions rewritten to corporate/executive framing with statewide travel mentioned for both buses. Moved the LED lighting feature from the Prevost Tour Bus to the Executive Shuttle per correction, renamed "LED Party Lighting" → "LED Accent Lighting", and did not invent a replacement feature for the Prevost (dropped from 5 to 4 listed features rather than fabricate an unconfirmed amenity).
-- [x] Verified with a full-text grep for "party"/"bachelor" across `app/`, `lib/`, `data/` — only remaining hits are the internal `type` discriminator comparisons and the admin waiver-templates tab keys, neither of which is user-visible.
-- [x] `tsc --noEmit` clean and `next build` succeeds (cleared a stale `.next` cache that referenced the deleted `test1` route).
-
-## Round 4 (LocalBusiness schema + footer social links, completed)
-
-- [x] Verified `@alcazarvela` (Instagram) and `alcazarvela` (LinkedIn company page) both resolve to real profiles. The LinkedIn page confirmed ALCAZARVELA is the legal entity operating as "ATX Boats & Buses," explicitly markets away from "party bus" aesthetics toward corporate charters, and lists a headquarters address — owner opted to keep the address out of the schema regardless (see decision below).
-- [x] `lib/site-config.ts`: added `openingHours: ["Mo-Su 10:00-17:00"]` and `sameAs: ["https://www.instagram.com/alcazarvela/", "https://www.linkedin.com/company/alcazarvela"]`. `address`/`geo` intentionally left unset per owner decision. `buildLocalBusinessJsonLd()` in `lib/seo.ts` already supported both fields conditionally, so no code changes were needed there.
-- [x] `components/layout/Footer.tsx`: replaced the three dead `href="#"` social icons (Instagram, Facebook, Twitter) with two real links — Instagram (`@alcazarvela`) and LinkedIn (chosen as the canonical account over `@boatsandbuses`). Facebook and Twitter/X were removed since no account was confirmed for either, consistent with the owner's decision to drop the unconfirmed Twitter/X placeholder. Also added a visible "Hours: 10am–5pm daily, or during scheduled charters" line, since "or during charters" isn't representable in the strict `openingHours` schema.org format.
-- [x] Verified visually: started a local dev server (created a git-ignored `.env.local` with placeholder/dummy values — **not real credentials, and not committed** — plus `.claude/launch.json` for the preview tool) and confirmed in-browser that the homepage title reads "Austin Corporate Boat Charters & Executive Bus Rentals" and the footer renders exactly two social icons linking to the confirmed Instagram and LinkedIn URLs.
-- [x] `tsc --noEmit` and `next build` both clean after these changes.
-
-## Open Questions (need owner input)
-- Confirm `CRON_SECRET` is set in the Vercel project env. The cron routes now fail closed without it, and the old `?secret=` manual-trigger URL no longer works (use an `Authorization: Bearer $CRON_SECRET` header instead).
-- Consider whether "Wedding transportation" should exist anywhere as a secondary category — it was dropped entirely per "focus only on corporate offsites and client appreciation events."
-- `.env.local` created in this session has placeholder/dummy values only (fake Stripe keys, fake DB URL, etc.) — needed only to boot the dev server for a visual check. Replace with real values before using `npm run dev` for actual local development. It's already git-ignored, so this doesn't affect version control.
+## Deferred (from the bug-hunt list, next pass)
+- Pre-payment availability re-check in checkout (#3) — softened by auto-release on conflict, still worth adding.
+- Bus availability outside 9:00–21:00 (#4).
+- Cron exact-date window (#5), deposit timezone boundary (#8), client rounding display (#9), misc lows (#11–#15).

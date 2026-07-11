@@ -18,9 +18,16 @@ function parseSettingValue(value: string): string | boolean {
   return value;
 }
 
+// Only these keys are safe to expose publicly — site_settings also holds
+// admin-only values (e.g. booking alert recipients).
+const PUBLIC_SETTING_KEYS = ["fuel_charge_enabled"];
+
 export async function GET() {
   try {
-    const result = await query<SettingRow>("SELECT key, value FROM site_settings");
+    const result = await query<SettingRow>(
+      "SELECT key, value FROM site_settings WHERE key = ANY($1)",
+      [PUBLIC_SETTING_KEYS]
+    );
 
     const settings = result.rows.reduce<Record<string, string | boolean>>((acc: Record<string, string | boolean>, row: SettingRow) => {
       acc[row.key] = parseSettingValue(row.value);

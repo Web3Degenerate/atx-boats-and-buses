@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import JsonLd from "@/components/seo/JsonLd";
 import VehicleCard from "@/components/vehicles/VehicleCard";
+import FaqCard from "@/components/faq/FaqCard";
 import {
   buildBreadcrumbJsonLd,
   buildFaqJsonLd,
@@ -8,6 +10,7 @@ import {
   buildVehicleItemListJsonLd,
   type FaqItem
 } from "@/lib/seo";
+import { getPublishedFaqs, stripHtml } from "@/lib/faqs";
 import { getVehicles } from "@/lib/vehicles";
 import type { Vehicle } from "@/types";
 
@@ -21,7 +24,9 @@ export const metadata: Metadata = buildMetadata({
   image: "/images/boat-slider-image-default.webp"
 });
 
-function buildBoatFaqs(boats: Vehicle[]): FaqItem[] {
+// Pricing stays computed from live vehicle data so it never goes stale;
+// all other FAQs are admin-managed in the faqs table.
+function buildBoatPricingFaq(boats: Vehicle[]): FaqItem {
   const pricingAnswer = boats
     .map(
       (boat) =>
@@ -29,43 +34,20 @@ function buildBoatFaqs(boats: Vehicle[]): FaqItem[] {
     )
     .join(". ");
 
-  return [
-    {
-      question: "Where can I charter a boat for a corporate event in Austin?",
-      answer:
-        "ATX Boats & Buses offers private boat charter options for Austin corporate outings, including trips on Lake Austin and Lake Travis depending on the selected vessel and event details."
-    },
-    {
-      question: "How much does a corporate boat charter cost in Austin?",
-      answer: `${pricingAnswer}. Exact totals are shown before checkout based on your trip length.`
-    },
-    {
-      question: "What boat charter options are available?",
-      answer:
-        "The current fleet includes a Cobalt boat for smaller groups and a Carver yacht for larger private lake events, with capacity and minimum hours listed on each vehicle page."
-    },
-    {
-      question: "What events are private boat charters best for?",
-      answer:
-        "Private boat charters are well suited for corporate offsites, client appreciation events, executive team outings, and business development days on the water around Austin."
-    },
-    {
-      question: "How do deposits and payment work?",
-      answer:
-        "A 20% deposit confirms your booking, and the remaining balance is automatically charged to your card on file two days before the trip. Bookings made within two days of the trip are paid in full at checkout."
-    },
-    {
-      question: "Do guests need to sign a waiver?",
-      answer:
-        "Yes. Every guest signs a digital waiver before the trip. You receive a shareable waiver link with your booking confirmation, plus reminders as your trip date approaches."
-    }
-  ];
+  return {
+    question: "How much does a corporate boat charter cost in Austin?",
+    answer: `${pricingAnswer}. Exact totals are shown before checkout based on your trip length.`
+  };
 }
 
 export default async function BoatsPage() {
-  const vehicles = await getVehicles();
+  const [vehicles, dbFaqs] = await Promise.all([getVehicles(), getPublishedFaqs(["boats", "general"])]);
   const boats = vehicles.filter((vehicle) => vehicle.type === "party-boat");
-  const faqs = buildBoatFaqs(boats);
+  const pricingFaq = buildBoatPricingFaq(boats);
+  const faqJsonLdItems: FaqItem[] = [
+    pricingFaq,
+    ...dbFaqs.map((faq) => ({ question: faq.question, answer: stripHtml(faq.answerHtml) }))
+  ];
 
   return (
     <>
@@ -76,7 +58,7 @@ export default async function BoatsPage() {
             { name: "Boat Rentals", path: "/boats" }
           ]),
           buildVehicleItemListJsonLd("Austin boat and yacht rentals", boats, "/boats"),
-          buildFaqJsonLd(faqs)
+          buildFaqJsonLd(faqJsonLdItems)
         ]}
       />
       <section className="mx-auto max-w-7xl px-6 py-16">
@@ -98,13 +80,17 @@ export default async function BoatsPage() {
         </div>
 
         <div className="mt-16 grid gap-6 md:grid-cols-3">
-          {faqs.map((faq) => (
-            <article key={faq.question} className="rounded-2xl border border-white/10 bg-neutral-900 p-6">
-              <h2 className="text-xl font-semibold text-white">{faq.question}</h2>
-              <p className="mt-3 text-sm leading-6 text-neutral-300">{faq.answer}</p>
-            </article>
+          <FaqCard question={pricingFaq.question} answerHtml={`<p>${pricingFaq.answer}</p>`} />
+          {dbFaqs.map((faq) => (
+            <FaqCard key={faq.id} question={faq.question} answerHtml={faq.answerHtml} href={`/faq/${faq.slug}`} />
           ))}
         </div>
+
+        <p className="mt-8 text-sm font-semibold">
+          <Link href="/faq" className="text-emerald-400 transition-colors hover:text-emerald-300">
+            See all frequently asked questions &rarr;
+          </Link>
+        </p>
       </section>
     </>
   );

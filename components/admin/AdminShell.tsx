@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ReactNode } from "react";
-import { CalendarX, FileCheck, FileText, LayoutTemplate, Receipt, ShieldAlert, Tags } from "lucide-react";
+import { Bell, CalendarX, FileCheck, FileText, HelpCircle, LayoutTemplate, Receipt, ShieldAlert, Tags } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import AdminGuard from "@/components/admin/AdminGuard";
@@ -20,8 +20,10 @@ const navLinks = [
   { href: "/admin/pricing", label: "Pricing", icon: Tags },
   { href: "/admin/coupons", label: "Coupons", icon: Tags },
   { href: "/admin/email-templates", label: "Email Templates", icon: LayoutTemplate },
+  { href: "/admin/faqs", label: "FAQs", icon: HelpCircle },
   { href: "/admin/banned", label: "Banned Customers", icon: ShieldAlert },
-  { href: "/admin/blocked", label: "Blocked Dates", icon: CalendarX }
+  { href: "/admin/blocked", label: "Blocked Dates", icon: CalendarX },
+  { href: "/admin/notifications", label: "Notifications", icon: Bell }
 ];
 
 export default function AdminShell({ access, children }: AdminShellProps) {

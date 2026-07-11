@@ -20,6 +20,15 @@ type ChargeBookingRow = ReminderBookingRow & {
   stripe_customer_id: string;
 };
 
+type StalePendingRow = {
+  id: string;
+  customer_name: string;
+  customer_email: string;
+  stripe_payment_intent_id: string | null;
+  date: string;
+  vehicle_name: string;
+};
+
 function formatCurrency(cents: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 }
@@ -49,10 +58,11 @@ export async function GET(request: NextRequest) {
   let reminders = 0;
   let charged = 0;
   let failed = 0;
+  let expiredPending = 0;
 
   const reminderResult = await query<ReminderBookingRow>(
     `
-      SELECT b.id, b.customer_name, b.customer_email, b.remaining_amount, b.date, v.name as vehicle_name
+      SELECT b.id, b.customer_name, b.customer_email, b.remaining_amount, b.date::text AS date, v.name as vehicle_name
       FROM bookings b
       JOIN vehicles v ON v.id = b.vehicle_id
       WHERE b.status = 'confirmed'
@@ -74,7 +84,7 @@ export async function GET(request: NextRequest) {
 
   const chargeResult = await query<ChargeBookingRow>(
     `
-      SELECT b.id, b.customer_name, b.customer_email, b.remaining_amount, b.date, b.stripe_payment_intent_id, b.stripe_customer_id, v.name as vehicle_name
+      SELECT b.id, b.customer_name, b.customer_email, b.remaining_amount, b.date::text AS date, b.stripe_payment_intent_id, b.stripe_customer_id, v.name as vehicle_name
       FROM bookings b
       JOIN vehicles v ON v.id = b.vehicle_id
       WHERE b.status = 'confirmed'
@@ -146,5 +156,45 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ success: true, reminders, charged, failed });
+  // Auto-cancel booking requests that were never approved or declined — the card
+  // authorization hold expires at ~7 days, so act at 6 before it lapses silently.
+  const stalePendingResult = await query<StalePendingRow>(
+    `
+      SELECT b.id, b.customer_name, b.customer_email, b.stripe_payment_intent_id, b.date::text AS date, v.name as vehicle_name
+      FROM bookings b
+      JOIN vehicles v ON v.id = b.vehicle_id
+      WHERE b.status = 'pending'
+        AND b.created_at < NOW() - INTERVAL '6 days'
+    `
+  );
+
+  for (const booking of stalePendingResult.rows) {
+    if (booking.stripe_payment_intent_id) {
+      try {
+        await stripe.paymentIntents.cancel(booking.stripe_payment_intent_id);
+      } catch (error) {
+        // The hold may have already expired on Stripe's side — cancel the booking regardless.
+        console.error(`Stale pending hold release failed for booking ${booking.id}:`, error);
+      }
+    }
+
+    await query("UPDATE bookings SET status = 'cancelled' WHERE id = $1", [booking.id]);
+    expiredPending += 1;
+
+    await sendEmailSafely({
+      to: booking.customer_email,
+      subject: "Booking Request Expired — ATX Boats and Buses",
+      text: `Hi ${booking.customer_name}, we're sorry — we were unable to confirm your booking request for ${booking.vehicle_name} on ${booking.date} before the payment hold expired. You have not been charged. Please reach out or book again and we'll take care of you. Thank you, ATX Boats and Buses`
+    });
+
+    if (process.env.ADMIN_ALERT_EMAIL) {
+      await sendEmailSafely({
+        to: process.env.ADMIN_ALERT_EMAIL,
+        subject: `Booking request expired unactioned — ${booking.vehicle_name} on ${booking.date}`,
+        text: `The booking request from ${booking.customer_name} (${booking.customer_email}) for ${booking.vehicle_name} on ${booking.date} sat pending for 6 days and was auto-cancelled before the card hold expired. Consider following up with the customer.`
+      });
+    }
+  }
+
+  return NextResponse.json({ success: true, reminders, charged, failed, expiredPending });
 }

@@ -3,6 +3,7 @@ import { vehicles } from "@/data/vehicles";
 import { query } from "@/lib/db";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { stripe } from "@/lib/stripe";
+import { getVehicleBySlug } from "@/lib/vehicles";
 
 type CheckoutRequestBody = {
   vehicleId?: string;
@@ -33,9 +34,19 @@ type BannedEmailRow = {
   id: string;
 };
 
-function toMinutes(time: string): number {
-  const [hours, minutes] = time.split(":").map(Number);
-  return hours * 60 + minutes;
+// Stripe metadata values are capped at 500 characters.
+const MAX_METADATA_VALUE_LENGTH = 450;
+
+function isValidIsoDate(date: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(date);
+}
+
+function isValidTime(time: string): boolean {
+  return /^\d{2}:\d{2}$/.test(time);
+}
+
+function truncateForMetadata(value: string): string {
+  return value.length > MAX_METADATA_VALUE_LENGTH ? value.slice(0, MAX_METADATA_VALUE_LENGTH) : value;
 }
 
 export async function POST(request: NextRequest) {
@@ -64,6 +75,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    if (
+      !isValidIsoDate(date) ||
+      !isValidTime(startTime) ||
+      !isValidTime(endTime) ||
+      (endDate && !isValidIsoDate(endDate))
+    ) {
+      return NextResponse.json({ error: "Invalid date or time format" }, { status: 400 });
+    }
+
     const bannedEmailResult = await query<BannedEmailRow>(
       "SELECT id FROM banned_emails WHERE LOWER(email) = LOWER($1) LIMIT 1",
       [customerEmail]
@@ -73,20 +93,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "banned" }, { status: 403 });
     }
 
-    const vehicle = vehicles.find((item) => item.id === vehicleId);
+    const staticVehicle = vehicles.find((item) => item.id === vehicleId);
+
+    if (!staticVehicle) {
+      return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
+    }
+
+    // Pricing, minimums, and fuel charge come from the DB (admin-managed), not the
+    // static file — the static values are only used to resolve the short id to a slug.
+    const vehicle = await getVehicleBySlug(staticVehicle.slug);
 
     if (!vehicle) {
       return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
     }
 
-    const vehicleResult = await query<{ id: string }>(
-      "SELECT id FROM vehicles WHERE slug = $1 LIMIT 1",
-      [vehicle.slug]
-    );
-    const dbVehicleId = vehicleResult.rows[0]?.id;
+    const dbVehicleId = vehicle.dbId;
 
-    if (!dbVehicleId) {
-      return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
+    if (!Number.isInteger(guestCount) || guestCount < 1 || guestCount > vehicle.capacity) {
+      return NextResponse.json(
+        { error: `Guest count must be between 1 and ${vehicle.capacity}` },
+        { status: 400 }
+      );
     }
 
     const actualEndDate = endDate || date;
@@ -94,9 +121,16 @@ export async function POST(request: NextRequest) {
     const endDateTime = new Date(`${actualEndDate}T${endTime}:00`);
     const durationHours = (endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60 * 60);
 
-    if (durationHours <= 0 || durationHours < vehicle.minimumHours) {
+    if (!Number.isFinite(durationHours) || durationHours <= 0 || durationHours < vehicle.minimumHours) {
       return NextResponse.json(
         { error: `Booking must be at least ${vehicle.minimumHours} hours` },
+        { status: 400 }
+      );
+    }
+
+    if (durationHours > vehicle.maximumHours) {
+      return NextResponse.json(
+        { error: `Booking cannot exceed ${vehicle.maximumHours} hours` },
         { status: 400 }
       );
     }
@@ -158,6 +192,9 @@ export async function POST(request: NextRequest) {
       payment_method_types: ["card"],
       mode: "payment",
       payment_intent_data: {
+        // Authorization hold only — captured when an admin approves the request,
+        // released (no charge, no fees) when declined.
+        capture_method: "manual",
         setup_future_usage: "off_session"
       },
       customer_creation: "always",
@@ -183,10 +220,10 @@ export async function POST(request: NextRequest) {
         endTime,
         endDate: endDate || date,
         guestCount: String(guestCount),
-        customerName,
-        customerEmail,
-        customerPhone,
-        notes: notes ?? "",
+        customerName: truncateForMetadata(customerName),
+        customerEmail: truncateForMetadata(customerEmail),
+        customerPhone: truncateForMetadata(customerPhone),
+        notes: truncateForMetadata(notes ?? ""),
         depositAmount: String(depositCents),
         remainingAmount: String(remainingCents),
         ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {})

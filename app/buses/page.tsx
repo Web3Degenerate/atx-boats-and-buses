@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import JsonLd from "@/components/seo/JsonLd";
 import VehicleCard from "@/components/vehicles/VehicleCard";
+import FaqCard from "@/components/faq/FaqCard";
 import {
   buildBreadcrumbJsonLd,
   buildFaqJsonLd,
@@ -8,6 +10,7 @@ import {
   buildVehicleItemListJsonLd,
   type FaqItem
 } from "@/lib/seo";
+import { getPublishedFaqs, stripHtml } from "@/lib/faqs";
 import { getVehicles } from "@/lib/vehicles";
 import type { Vehicle } from "@/types";
 
@@ -21,7 +24,9 @@ export const metadata: Metadata = buildMetadata({
   image: "/images/bus-slider-image-default.webp"
 });
 
-function buildBusFaqs(buses: Vehicle[]): FaqItem[] {
+// Pricing and capacity stay computed from live vehicle data so they never go
+// stale; all other FAQs are admin-managed in the faqs table.
+function buildBusComputedFaqs(buses: Vehicle[]): FaqItem[] {
   const pricingAnswer = buses
     .map(
       (bus) =>
@@ -32,45 +37,24 @@ function buildBusFaqs(buses: Vehicle[]): FaqItem[] {
 
   return [
     {
-      question: "What bus rentals are available in Austin?",
-      answer:
-        "ATX Boats & Buses offers premium executive group transportation including a Prevost motorcoach and an executive shuttle for Austin corporate events that need comfortable, private transportation."
-    },
-    {
       question: "How much does an executive bus rental cost in Austin?",
       answer: `${pricingAnswer}. A fuel charge may apply, and exact totals are shown before checkout based on your trip length.`
     },
     {
       question: "How many guests can ride?",
       answer: `Capacity depends on the vehicle. The current Austin bus fleet supports private groups up to ${maxCapacity} guests, with details listed on each vehicle page.`
-    },
-    {
-      question: "What events are executive bus rentals best for?",
-      answer:
-        "Executive bus rentals work well for corporate offsites, client appreciation events, executive retreats, business conferences, and downtown Austin corporate transportation."
-    },
-    {
-      question: "Can the executive bus travel outside Austin?",
-      answer:
-        "Yes. Both the Prevost motorcoach and Executive Shuttle are available for statewide corporate travel, including conferences and business trips to Dallas, Fort Worth, San Antonio, and Houston, as well as Hill Country visits."
-    },
-    {
-      question: "How do deposits and payment work?",
-      answer:
-        "A 20% deposit confirms your booking, and the remaining balance is automatically charged to your card on file two days before the trip. Bookings made within two days of the trip are paid in full at checkout."
-    },
-    {
-      question: "Do guests need to sign a waiver?",
-      answer:
-        "Yes. Every guest signs a digital waiver before the trip. You receive a shareable waiver link with your booking confirmation, plus reminders as your trip date approaches."
     }
   ];
 }
 
 export default async function BusesPage() {
-  const vehicles = await getVehicles();
+  const [vehicles, dbFaqs] = await Promise.all([getVehicles(), getPublishedFaqs(["buses", "general"])]);
   const buses = vehicles.filter((vehicle) => vehicle.type === "party-bus");
-  const faqs = buildBusFaqs(buses);
+  const computedFaqs = buildBusComputedFaqs(buses);
+  const faqJsonLdItems: FaqItem[] = [
+    ...computedFaqs,
+    ...dbFaqs.map((faq) => ({ question: faq.question, answer: stripHtml(faq.answerHtml) }))
+  ];
 
   return (
     <>
@@ -81,7 +65,7 @@ export default async function BusesPage() {
             { name: "Bus Rentals", path: "/buses" }
           ]),
           buildVehicleItemListJsonLd("Austin executive bus and motorcoach rentals", buses, "/buses"),
-          buildFaqJsonLd(faqs)
+          buildFaqJsonLd(faqJsonLdItems)
         ]}
       />
       <section className="mx-auto max-w-7xl px-6 py-16">
@@ -104,13 +88,19 @@ export default async function BusesPage() {
         </div>
 
         <div className="mt-16 grid gap-6 md:grid-cols-3">
-          {faqs.map((faq) => (
-            <article key={faq.question} className="rounded-2xl border border-white/10 bg-neutral-900 p-6">
-              <h2 className="text-xl font-semibold text-white">{faq.question}</h2>
-              <p className="mt-3 text-sm leading-6 text-neutral-300">{faq.answer}</p>
-            </article>
+          {computedFaqs.map((faq) => (
+            <FaqCard key={faq.question} question={faq.question} answerHtml={`<p>${faq.answer}</p>`} />
+          ))}
+          {dbFaqs.map((faq) => (
+            <FaqCard key={faq.id} question={faq.question} answerHtml={faq.answerHtml} href={`/faq/${faq.slug}`} />
           ))}
         </div>
+
+        <p className="mt-8 text-sm font-semibold">
+          <Link href="/faq" className="text-emerald-400 transition-colors hover:text-emerald-300">
+            See all frequently asked questions &rarr;
+          </Link>
+        </p>
       </section>
     </>
   );

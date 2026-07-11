@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { vehicles } from "@/data/vehicles";
+import { getBookingForAction, sendBookingRequestAlerts } from "@/lib/booking-actions";
+import { createBookingActionToken } from "@/lib/booking-approval";
 import { query } from "@/lib/db";
 import { getResend } from "@/lib/resend";
-import { getEmailTemplate, renderTemplate } from "@/lib/email-templates";
 import { stripe } from "@/lib/stripe";
-import { createWaiverLink } from "@/lib/waiver";
 
 type VehicleRow = {
   id: string;
@@ -17,10 +17,6 @@ type InsertedBookingRow = {
 
 type ExistingBookingRow = {
   id: string;
-};
-
-type WaiverLinkRow = {
-  token: string;
 };
 
 function isValidIsoDate(date: string): boolean {
@@ -68,7 +64,7 @@ async function notifyAdminOfWebhookFailure(params: {
   }
 }
 
-async function sendBookingConfirmationEmail(params: {
+async function sendRequestReceivedEmail(params: {
   customerName: string;
   customerEmail: string;
   vehicleName: string;
@@ -76,44 +72,12 @@ async function sendBookingConfirmationEmail(params: {
   startTime: string;
   endTime: string;
   depositAmount: number;
-  remainingAmount: number;
-  waiverLink: string;
 }): Promise<void> {
-  const template = await getEmailTemplate(
-    params.remainingAmount > 0 ? "booking_confirmed_deposit" : "booking_confirmed_full"
-  );
-  const customerEmailText = params.remainingAmount > 0
-    ? `Hi ${params.customerName}, great news! Your booking for ${params.vehicleName} on ${params.date} from ${params.startTime} to ${params.endTime} has been approved. Your 20% deposit of ${formatCurrency(params.depositAmount)} has already been charged. Your remaining balance of ${formatCurrency(params.remainingAmount)} will be automatically charged to your card on file 2 days before your booking. We look forward to seeing you! Thank you, ATX Boats and Buses`
-    : `Hi ${params.customerName}, great news! Your booking for ${params.vehicleName} on ${params.date} from ${params.startTime} to ${params.endTime} has been approved and your payment of ${formatCurrency(params.depositAmount)} has been processed. We look forward to seeing you! Thank you, ATX Boats and Buses`;
-
-  if (template) {
-    const renderedHtml = renderTemplate(template.html_body, {
-      customerName: params.customerName,
-      vehicleName: params.vehicleName,
-      date: params.date,
-      startTime: params.startTime,
-      endTime: params.endTime,
-      depositAmount: formatCurrency(params.depositAmount),
-      remainingAmount: formatCurrency(params.remainingAmount),
-      totalAmount: formatCurrency(params.depositAmount + params.remainingAmount)
-    });
-
-    const confirmationHtml = `${renderedHtml}<p style="margin-top:16px;">Complete your waiver here: <a href="${params.waiverLink}">${params.waiverLink}</a></p>`;
-
-    await getResend().emails.send({
-      from: "ATX Boats and Buses <bookings@atxboatsandbuses.com>",
-      to: params.customerEmail,
-      subject: template.subject,
-      html: confirmationHtml
-    });
-    return;
-  }
-
   await getResend().emails.send({
     from: "ATX Boats and Buses <bookings@atxboatsandbuses.com>",
     to: params.customerEmail,
-    subject: "Booking Confirmed — ATX Boats and Buses",
-    text: `${customerEmailText}\n\nComplete your waiver here: ${params.waiverLink}`
+    subject: "Booking Request Received — ATX Boats and Buses",
+    text: `Hi ${params.customerName}, we received your booking request for ${params.vehicleName} on ${params.date} from ${params.startTime} to ${params.endTime}. A hold of ${formatCurrency(params.depositAmount)} has been placed on your card — you will not be charged unless your booking is approved. We review requests quickly and you will receive a confirmation email shortly. Thank you, ATX Boats and Buses`
   });
 }
 
@@ -220,9 +184,6 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      let bookingId: string;
-      let bookingCreated = false;
-
       const bookingInsertResult = await query<InsertedBookingRow>(
         `
           INSERT INTO bookings (
@@ -244,7 +205,7 @@ export async function POST(request: NextRequest) {
             stripe_payment_intent_id,
             stripe_customer_id
           )
-          VALUES ($1, $2, $3, $4, $5::date, $6::date, $7::time, $8::time, $9, $10, $11, $12, $13, 'confirmed', $14, $15, $16)
+          VALUES ($1, $2, $3, $4, $5::date, $6::date, $7::time, $8::time, $9, $10, $11, $12, $13, 'pending', $14, $15, $16)
           ON CONFLICT (stripe_session_id) DO NOTHING
           RETURNING id
         `,
@@ -259,7 +220,7 @@ export async function POST(request: NextRequest) {
           endTime,
           guestCount,
           notes,
-          session.amount_total ?? 0,
+          depositAmount + remainingAmount,
           depositAmount,
           remainingAmount,
           session.id,
@@ -269,26 +230,14 @@ export async function POST(request: NextRequest) {
       );
 
       const insertedBookingId = bookingInsertResult.rows[0]?.id;
-      if (insertedBookingId) {
-        bookingId = insertedBookingId;
-        bookingCreated = true;
-        console.log("Stripe webhook: booking created", {
-          bookingId,
-          sessionId: session.id,
-          paymentIntentId,
-          vehicleId,
-          date,
-          startTime,
-          endTime
-        });
-      } else {
+
+      if (!insertedBookingId) {
         const existingBookingResult = await query<ExistingBookingRow>(
           "SELECT id FROM bookings WHERE stripe_session_id = $1 LIMIT 1",
           [session.id]
         );
-        const existingBookingId = existingBookingResult.rows[0]?.id;
 
-        if (!existingBookingId) {
+        if (!existingBookingResult.rows[0]?.id) {
           const errorMessage = "Booking insert returned no id and no existing stripe_session_id row was found";
           console.error("Stripe webhook: no booking row persisted for completed checkout session", {
             sessionId: session.id,
@@ -304,51 +253,44 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "Booking was not persisted" }, { status: 500 });
         }
 
-        bookingId = existingBookingId;
-        console.log("Stripe webhook: duplicate session loaded existing booking", {
-          bookingId,
-          sessionId: session.id,
-          paymentIntentId
-        });
-      }
-
-      if (!bookingId) {
-        throw new Error("Booking insert did not return an id");
-      }
-
-      const existingWaiverResult = await query<WaiverLinkRow>(
-        "SELECT token FROM waiver_links WHERE booking_id = $1 LIMIT 1",
-        [bookingId]
-      );
-
-      if (existingWaiverResult.rows[0]?.token) {
-        console.log("Stripe webhook: downstream waiver/email work already completed", {
-          bookingId,
-          sessionId: session.id,
-          bookingCreated
+        // Duplicate delivery of the same session — the request emails already went out.
+        console.log("Stripe webhook: duplicate session handled idempotently", {
+          bookingId: existingBookingResult.rows[0].id,
+          sessionId: session.id
         });
         return NextResponse.json({ received: true });
       }
 
-      const waiverLink = await createWaiverLink(bookingId, matchedVehicle.type, guestCount, date);
-      await sendBookingConfirmationEmail({
-        customerName,
-        customerEmail,
-        vehicleName: matchedVehicle.name,
+      console.log("Stripe webhook: booking request recorded", {
+        bookingId: insertedBookingId,
+        sessionId: session.id,
+        paymentIntentId,
+        vehicleId,
         date,
         startTime,
-        endTime,
-        depositAmount,
-        remainingAmount,
-        waiverLink
+        endTime
       });
 
-      if (!bookingCreated) {
-        console.log("Stripe webhook: duplicate session handled idempotently", {
-          bookingId,
-          sessionId: session.id,
-          downstreamCompleted: false
+      try {
+        await sendRequestReceivedEmail({
+          customerName,
+          customerEmail,
+          vehicleName: matchedVehicle.name,
+          date,
+          startTime,
+          endTime,
+          depositAmount
         });
+      } catch (emailError) {
+        console.error("Request-received email failed:", emailError);
+      }
+
+      const booking = await getBookingForAction(insertedBookingId);
+
+      if (booking) {
+        const token = createBookingActionToken(insertedBookingId);
+        const reviewUrl = token ? `${process.env.NEXT_PUBLIC_BASE_URL}/booking-action?token=${token}` : null;
+        await sendBookingRequestAlerts(booking, reviewUrl);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -357,20 +299,48 @@ export async function POST(request: NextRequest) {
         : undefined;
 
       if (postgresErrorCode === "23P01") {
-        console.error("Stripe webhook: booking overlap exclusion constraint violation after payment capture", {
+        // Someone else booked this slot first. The payment is only an auth hold at
+        // this point, so release it automatically — the customer is never charged.
+        let holdReleased = false;
+
+        if (paymentIntentId) {
+          try {
+            await stripe.paymentIntents.cancel(paymentIntentId);
+            holdReleased = true;
+          } catch (cancelError) {
+            console.error("Failed to release hold after overlap:", cancelError);
+          }
+        }
+
+        try {
+          await getResend().emails.send({
+            from: "ATX Boats and Buses <bookings@atxboatsandbuses.com>",
+            to: customerEmail,
+            subject: "Booking Unavailable — ATX Boats and Buses",
+            text: holdReleased
+              ? `Hi ${customerName}, unfortunately the time you requested for ${matchedVehicle.name} on ${date} was booked by another customer moments before your request. The hold on your card has been released and you will not be charged. We'd love to host you at another time — please check availability and book again. Thank you, ATX Boats and Buses`
+              : `Hi ${customerName}, unfortunately the time you requested for ${matchedVehicle.name} on ${date} was booked by another customer moments before your request. We are releasing the hold on your card — if it does not clear within a few business days, please contact us. Thank you, ATX Boats and Buses`
+          });
+        } catch (emailError) {
+          console.error("Overlap notification email failed:", emailError);
+        }
+
+        console.error("Stripe webhook: booking overlap — hold " + (holdReleased ? "released" : "release FAILED"), {
           sessionId: session.id,
           paymentIntentId,
           error: errorMessage
         });
         await notifyAdminOfWebhookFailure({
-          reason: "Booking overlap exclusion constraint violation after payment capture",
+          reason: holdReleased
+            ? "Booking overlap: duplicate slot request; the customer's hold was automatically released. No action needed unless they rebook."
+            : "Booking overlap AND the hold release failed — cancel the payment intent manually in Stripe.",
           sessionId: session.id,
           paymentIntentId,
           customerEmail,
           metadata,
           errorMessage
         });
-        return NextResponse.json({ error: "Booking overlap detected after payment capture" }, { status: 500 });
+        return NextResponse.json({ received: true, overlap: true });
       }
 
       console.error("Webhook checkout.session.completed error:", {
