@@ -9,6 +9,7 @@ export type ActionBookingRow = {
   status: string;
   customer_name: string;
   customer_email: string;
+  stripe_session_id: string | null;
   stripe_payment_intent_id: string | null;
   balance_payment_intent_id: string | null;
   balance_paid: boolean | null;
@@ -37,6 +38,7 @@ export async function getBookingForAction(bookingId: string): Promise<ActionBook
         b.status,
         b.customer_name,
         b.customer_email,
+        b.stripe_session_id,
         b.stripe_payment_intent_id,
         b.balance_payment_intent_id,
         b.balance_paid,
@@ -269,6 +271,14 @@ export async function getBookingAlertRecipients(): Promise<string[]> {
   return process.env.ADMIN_ALERT_EMAIL ? [process.env.ADMIN_ALERT_EMAIL] : [];
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 export async function sendBookingRequestAlerts(booking: ActionBookingRow, reviewUrl: string | null): Promise<void> {
   const recipients = await getBookingAlertRecipients();
 
@@ -276,9 +286,34 @@ export async function sendBookingRequestAlerts(booking: ActionBookingRow, review
     return;
   }
 
+  const dashboardUrl = process.env.NEXT_PUBLIC_BASE_URL ? `${process.env.NEXT_PUBLIC_BASE_URL}/admin` : null;
+
   // Kept short so SMS-gateway recipients (e.g. @vtext.com) get the essentials before truncation.
   const summary = `New booking request: ${booking.vehicle_name} ${booking.date} ${booking.start_time.slice(0, 5)}-${booking.end_time.slice(0, 5)}, ${booking.guest_count} guests, ${formatCurrency(booking.deposit_amount)} hold. ${booking.customer_name}.`;
-  const text = reviewUrl ? `${summary}\nApprove or decline: ${reviewUrl}` : summary;
+  const textLines = [summary];
+  if (reviewUrl) {
+    textLines.push(`Approve or decline (no login): ${reviewUrl}`);
+  }
+  if (dashboardUrl) {
+    textLines.push(`Admin dashboard: ${dashboardUrl}`);
+  }
+  const text = textLines.join("\n");
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 480px;">
+      <h2 style="margin: 0 0 8px;">New booking request</h2>
+      <table style="border-collapse: collapse; font-size: 14px; color: #333;">
+        <tr><td style="padding: 2px 12px 2px 0; color: #777;">Vehicle</td><td>${escapeHtml(booking.vehicle_name)}</td></tr>
+        <tr><td style="padding: 2px 12px 2px 0; color: #777;">Date</td><td>${escapeHtml(booking.date)}</td></tr>
+        <tr><td style="padding: 2px 12px 2px 0; color: #777;">Time</td><td>${booking.start_time.slice(0, 5)}&ndash;${booking.end_time.slice(0, 5)}</td></tr>
+        <tr><td style="padding: 2px 12px 2px 0; color: #777;">Guests</td><td>${booking.guest_count}</td></tr>
+        <tr><td style="padding: 2px 12px 2px 0; color: #777;">Customer</td><td>${escapeHtml(booking.customer_name)}</td></tr>
+        <tr><td style="padding: 2px 12px 2px 0; color: #777;">Hold</td><td>${formatCurrency(booking.deposit_amount)}</td></tr>
+      </table>
+      ${reviewUrl ? `<p style="margin: 20px 0;"><a href="${reviewUrl}" style="background: #059669; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold;">Review &amp; Approve / Decline</a></p><p style="font-size: 12px; color: #777;">One-click review &mdash; no login required. This link expires in 6 days.</p>` : ""}
+      ${dashboardUrl ? `<p style="font-size: 14px;">Or manage all bookings in the <a href="${dashboardUrl}">admin dashboard</a>.</p>` : ""}
+    </div>
+  `;
 
   for (const recipient of recipients) {
     try {
@@ -286,7 +321,8 @@ export async function sendBookingRequestAlerts(booking: ActionBookingRow, review
         from: "ATX Boats and Buses <bookings@atxboatsandbuses.com>",
         to: recipient,
         subject: `Booking request: ${booking.vehicle_name} ${booking.date}`,
-        text
+        text,
+        html
       });
     } catch (error) {
       console.error(`Booking request alert failed for ${recipient}:`, error);

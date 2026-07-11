@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import ManualBookingForm from "@/components/admin/ManualBookingForm";
 
 type BookingRow = {
   id: string;
@@ -15,8 +16,15 @@ type BookingRow = {
   guest_count: number;
   total_price: number;
   deposit_amount: number;
+  stripe_payment_intent_id: string | null;
   status: string;
 };
+
+function isAwaitingPayment(booking: BookingRow): boolean {
+  // Public bookings always carry a payment intent from checkout; only manual
+  // bookings sit confirmed with an amount due and no payment intent yet.
+  return booking.status === "confirmed" && booking.deposit_amount > 0 && !booking.stripe_payment_intent_id;
+}
 
 function formatCurrency(cents: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
@@ -41,25 +49,35 @@ export default function BookingsClient() {
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionBookingId, setActionBookingId] = useState<string | null>(null);
+  const [showManualForm, setShowManualForm] = useState(false);
 
   async function fetchBookings() {
-    const response = await fetch("/api/admin/bookings");
+    try {
+      const response = await fetch("/api/admin/bookings");
 
-    if (response.status === 401) {
-      router.replace("/admin/login");
-      return;
+      if (response.status === 401) {
+        router.replace("/admin/login");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Bookings request failed with status ${response.status}`);
+      }
+
+      const data = (await response.json()) as BookingRow[];
+      setBookings(data);
+    } catch (error) {
+      console.error("Failed to load admin bookings:", error);
+    } finally {
+      setLoading(false);
     }
-
-    const data = (await response.json()) as BookingRow[];
-    setBookings(data);
-    setLoading(false);
   }
 
   useEffect(() => {
     fetchBookings();
   }, [router]);
 
-  async function postAction(url: string, body: Record<string, unknown>, failureMessage: string) {
+  async function postAction(url: string, body: Record<string, unknown>, failureMessage: string): Promise<boolean> {
     try {
       const response = await fetch(url, {
         method: "POST",
@@ -71,16 +89,21 @@ export default function BookingsClient() {
 
       if (response.status === 401) {
         router.replace("/admin/login");
-        return;
+        return false;
       }
 
       if (response.ok) {
         await fetchBookings();
-        return;
+        return true;
       }
 
       const data = (await response.json().catch(() => null)) as { error?: string } | null;
       window.alert(data?.error || failureMessage);
+      return false;
+    } catch (error) {
+      console.error(`${failureMessage}:`, error);
+      window.alert(`${failureMessage} Check your connection and try again.`);
+      return false;
     } finally {
       setActionBookingId(null);
     }
@@ -112,6 +135,27 @@ export default function BookingsClient() {
     await postAction("/api/admin/bookings/reject", { bookingId: booking.id, refund: true }, "Failed to decline booking.");
   }
 
+  async function handleResendPaymentLink(booking: BookingRow) {
+    const confirmed = window.confirm(
+      `Send ${booking.customer_name} a fresh payment link for ${formatCurrency(booking.deposit_amount)}?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setActionBookingId(booking.id);
+    const succeeded = await postAction(
+      "/api/admin/bookings/payment-link",
+      { bookingId: booking.id },
+      "Failed to send payment link."
+    );
+
+    if (succeeded) {
+      window.alert("Payment link sent to the customer.");
+    }
+  }
+
   async function handleCancel(bookingId: string, refund: boolean) {
     const confirmed = refund
       ? window.confirm("This will cancel the booking and refund the customer. Continue?")
@@ -134,6 +178,21 @@ export default function BookingsClient() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowManualForm((prev) => !prev)}
+          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
+        >
+          {showManualForm ? "Close Manual Booking" : "+ New Manual Booking"}
+        </button>
+        {showManualForm && (
+          <div className="mt-3">
+            <ManualBookingForm onCreated={fetchBookings} />
+          </div>
+        )}
+      </div>
+
       {pendingBookings.length > 0 && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
           <h2 className="text-sm font-bold text-amber-900">
@@ -200,7 +259,14 @@ export default function BookingsClient() {
             {otherBookings.map((booking) => (
               <tr key={booking.id}>
                 <td className="px-3 py-2">
-                  <StatusBadge status={booking.status} />
+                  <div className="flex flex-col gap-1">
+                    <StatusBadge status={booking.status} />
+                    {isAwaitingPayment(booking) && (
+                      <span className="inline-flex rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-800">
+                        unpaid
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-3 py-2">{booking.vehicle_name}</td>
                 <td className="px-3 py-2">{booking.customer_name}</td>
@@ -215,6 +281,15 @@ export default function BookingsClient() {
                 <td className="px-3 py-2">
                   {booking.status === "confirmed" ? (
                     <div className="flex gap-2">
+                      {isAwaitingPayment(booking) && (
+                        <button
+                          onClick={() => handleResendPaymentLink(booking)}
+                          disabled={actionBookingId !== null}
+                          className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 disabled:opacity-70"
+                        >
+                          Resend Payment Link
+                        </button>
+                      )}
                       <button
                         onClick={() => handleCancel(booking.id, true)}
                         disabled={actionBookingId !== null}

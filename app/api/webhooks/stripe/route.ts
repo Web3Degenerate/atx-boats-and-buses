@@ -4,6 +4,7 @@ import { vehicles } from "@/data/vehicles";
 import { getBookingForAction, sendBookingRequestAlerts } from "@/lib/booking-actions";
 import { createBookingActionToken } from "@/lib/booking-approval";
 import { query } from "@/lib/db";
+import { notifyManualBookingPaid } from "@/lib/manual-booking";
 import { getResend } from "@/lib/resend";
 import { stripe } from "@/lib/stripe";
 
@@ -102,6 +103,60 @@ export async function POST(request: NextRequest) {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     const metadata = session.metadata || {};
+
+    // Manual admin bookings: the row already exists as 'confirmed' — this payment
+    // session just settles it. Record the Stripe ids and alert the admins.
+    if (metadata.manualBookingId) {
+      const manualPaymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : "";
+      const manualCustomerId = typeof session.customer === "string" ? session.customer : "";
+
+      try {
+        const updateResult = await query(
+          `
+            UPDATE bookings
+            SET stripe_session_id = $1, stripe_payment_intent_id = $2, stripe_customer_id = $3
+            WHERE id = $4
+              AND stripe_payment_intent_id IS NULL
+            RETURNING id
+          `,
+          [session.id, manualPaymentIntentId, manualCustomerId, metadata.manualBookingId]
+        );
+
+        // Stripe retries webhook deliveries. Only the delivery that settles the
+        // still-unpaid booking should send the payment notification.
+        if (updateResult.rowCount === 1) {
+          await notifyManualBookingPaid(metadata.manualBookingId);
+        } else if (manualPaymentIntentId) {
+          const paidBookingResult = await query<{ stripe_payment_intent_id: string | null }>(
+            "SELECT stripe_payment_intent_id FROM bookings WHERE id = $1 LIMIT 1",
+            [metadata.manualBookingId]
+          );
+          const recordedPaymentIntentId = paidBookingResult.rows[0]?.stripe_payment_intent_id;
+
+          // A customer may finish an older Checkout tab at the same instant an
+          // admin resends a link. Refund any later duplicate completion.
+          if (recordedPaymentIntentId && recordedPaymentIntentId !== manualPaymentIntentId) {
+            await stripe.refunds.create(
+              { payment_intent: manualPaymentIntentId },
+              { idempotencyKey: `manual-booking-duplicate-${session.id}` }
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Manual booking payment update failed:", error);
+        await notifyAdminOfWebhookFailure({
+          reason: "Manual booking payment received but the booking row update failed — reconcile manually.",
+          sessionId: session.id,
+          paymentIntentId: manualPaymentIntentId,
+          customerEmail: session.customer_details?.email || undefined,
+          metadata,
+          errorMessage: error instanceof Error ? error.message : String(error)
+        });
+        return NextResponse.json({ error: "Manual booking update failed" }, { status: 500 });
+      }
+
+      return NextResponse.json({ received: true });
+    }
 
     const vehicleId = metadata.vehicleId;
     const date = metadata.date;

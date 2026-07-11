@@ -1,3 +1,45 @@
+# Manual Admin Bookings
+
+Approved design (owner picked: email payment link · prefilled-but-editable amount · per-booking full/deposit toggle). Admin creates a booking from `/admin`; the DB row is created instantly as `confirmed` (blocks the calendar via the existing exclusion constraint), the waiver link is generated, and the customer gets one email with the waiver link + a secure Stripe Checkout payment link. Payment status is visible in the bookings tab; unpaid manual bookings get a "Resend payment link" button (Checkout links expire after 24h — resending mints a fresh one).
+
+Key reuse: `createWaiverLink`, `getBookingAlertRecipients`, DB pricing via the admin pricing API, existing webhook + balance-charge cron (deposit mode saves the card with `setup_future_usage` exactly like the public flow).
+
+## Plan
+
+- [ ] `lib/manual-booking.ts` (new): `createManualBooking()` — validate, insert `confirmed` booking (notes tagged `[Manual]`), catch 23P01 → friendly conflict error, explicit `blocked_dates` overlap check (constraint only covers booking-vs-booking), create waiver link, mint Checkout Session (automatic capture — no approval step; `setup_future_usage` for deposit mode), send the combined customer email. Also `createPaymentLinkForBooking()` for resends.
+- [ ] `POST /api/admin/bookings/create` + `POST /api/admin/bookings/payment-link` (both `isAdminAuthorized`).
+- [ ] Webhook: sessions with `metadata.manualBookingId` **update** the existing row (session id, PI, customer id) instead of inserting; alert recipients get a "payment received" note. Public insert path untouched.
+- [ ] Bookings tab: "New Manual Booking" form (vehicle dropdown from `/api/admin/pricing`, native date/time inputs, guest count, name/email/phone, notes, auto-computed editable amount, full-vs-deposit radio); "unpaid" badge + Resend button on manual bookings awaiting payment (discriminator: `deposit_amount > 0 AND stripe_payment_intent_id IS NULL` — public bookings always have a PI from birth).
+- [x] `tsc --noEmit` + `next build`; then fold into the pending end-to-end test-DB run (public flow via Stripe CLI + review-link approve/decline; manual flow via the preview browser with owner logged into `/admin`).
+
+## End-to-end test results (test Supabase DB `mmpggpzwkbdxixlmfsqj` + Stripe test mode, 2026-07-10)
+
+Setup: production schema introspected read-only and reproduced on the empty test DB (13 tables, `booking_status` enum, generated `booking_blocked_range` column, gist exclusion constraint — verified present); reference data copied (vehicles, settings, waiver/email templates, admin_users — no customer rows). Payments simulated with real test-mode manual-capture PaymentIntents (`pm_card_visa`) + signed `checkout.session.completed` events delivered to the local webhook (preview browser is sandboxed to localhost, so Stripe's hosted page itself was the only piece not driven — it's Stripe's UI, not our code).
+
+| # | Test | Result |
+|---|------|--------|
+| 1 | Public booking → webhook → `pending` row, correct DB pricing ($384/$1,536/$1,920), hold `requires_capture`, no waiver yet | ✅ |
+| 2 | Approve via one-click review page → PI captured ($384 received), status `confirmed`, waiver link created, buttons suppressed after | ✅ |
+| 3 | Decline via signed token POST → PI `canceled` (hold released), booking `cancelled` | ✅ |
+| 4 | Double-booking same slot → webhook 200 `overlap:true`, PI auto-`canceled`, no orphan row | ✅ |
+| 5 | Waiver chain: GET redacts customer email/phone, signing succeeds, 19KB PDF stored | ✅ |
+| 6 | Guest-count cap: 11th signature on a 10-guest booking → 409 | ✅ |
+| 7 | Stale-pending cron: 7-day-old pending booking auto-cancelled (`expiredPending: 1`) | ✅ |
+| 8 | Cron auth fails closed on wrong bearer token → 401 | ✅ |
+| 9 | Manual-booking webhook settle branch: paid session updates existing `confirmed` row with PI/session/customer ids | ✅ |
+| 10 | Manual booking via real auth-gated route (minted NextAuth session): 401 without cookie; `confirmed` row + `[Manual]` tag + 20% deposit ($600/$2,400 of $3,000) + waiver link created immediately + no PI (awaiting payment); overlap → 400 conflict; over-capacity (99 on 16-cap) → 400 | ✅ |
+| 11 | Resend payment link on unpaid manual booking → new Checkout URL issued | ✅ |
+| 12 | `/admin` dashboard link destination loads for authed admin (not redirected) | ✅ |
+| 13 | Booking-request alert (new HTML+text): review link + `/admin` link both present and resolve; review link loads a live pending page | ✅ |
+
+**Notification enhancement (this pass):** `sendBookingRequestAlerts` now sends multipart email — HTML with an "Review & Approve / Decline" button (one-click token link, no login) plus an admin-dashboard link, and a compact text fallback with both links for SMS-gateway recipients. Applies to both configured `/admin/notifications` recipients and the `bookings@` (`ADMIN_ALERT_EMAIL`) fallback via the same path. Manual-booking paid alerts unchanged (nothing to approve).
+
+**Finding:** `hostnomics@gmail.com` is in both `admin_users` and `WAIVER_ONLY_ADMIN_EMAILS`; the waiver-only list takes precedence in `getAdminAccess()`, so that account cannot see the bookings tab. Use `brettclarkconsulting@gmail.com` or `degeneratechain@gmail.com` for full admin, or remove hostnomics from the env list.
+
+**Before deploy:** restore the production `DATABASE_URL` in `.env.local` (commented line is preserved above the test one).
+
+---
+
 # FAQ System (v1: DB-backed FAQ pages + admin editor; v2: keyword-driven content queue)
 
 Goal: every FAQ is a Google-indexable landing page targeting a real search phrase. Admin creates FAQs in the panel (TinyMCE, same pattern as email/waiver templates); each question gets its own URL (`/faq/<slug>`) that renders the target answer on top with all other FAQ cards below, plus a master `/faq` page linked from the footer.
