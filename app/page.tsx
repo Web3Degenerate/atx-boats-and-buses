@@ -26,7 +26,7 @@ export default function HomePage() {
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.8 }}
           >
-            <h1 className="mb-6 text-5xl font-bold tracking-tighter md:text-7xl lg:text-8xl">
+            <h1 className="mb-6 text-3xl font-bold tracking-tight md:text-4xl lg:text-5xl">
               Austin Corporate Boat Charters & Executive Bus Rentals
             </h1>
           </motion.div>

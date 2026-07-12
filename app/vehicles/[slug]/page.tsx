@@ -7,10 +7,8 @@ import ImageCarouselAnimated from "@/components/vehicles/ImageCarouselAnimated";
 import { query } from "@/lib/db";
 import {
   buildBreadcrumbJsonLd,
-  buildFaqJsonLd,
   buildMetadata,
-  buildVehicleServiceJsonLd,
-  type FaqItem
+  buildVehicleServiceJsonLd
 } from "@/lib/seo";
 import { getVehicleBySlug } from "@/lib/vehicles";
 import type { Vehicle } from "@/types";
@@ -116,51 +114,6 @@ function getCarouselImages(vehicle: Vehicle): string[] {
   return vehicle.images;
 }
 
-function getBestUseCases(vehicle: Vehicle): string {
-  if (vehicle.type === "party-bus") {
-    return "corporate offsites, client appreciation events, executive retreats, business conferences, and statewide corporate travel to Dallas, Fort Worth, San Antonio, and Houston";
-  }
-
-  return "Lake Austin and Lake Travis corporate offsites, client appreciation events, executive team outings, and business development days";
-}
-
-function buildVehicleFaqs(vehicle: Vehicle): FaqItem[] {
-  const fuelChargeNote =
-    vehicle.fuelChargePercent > 0
-      ? ` A ${vehicle.fuelChargePercent}% ${vehicle.optionalChargeLabel.toLowerCase()} may apply.`
-      : "";
-
-  return [
-    {
-      question: `What is ${vehicle.name} best for?`,
-      answer: `${vehicle.name} is a strong fit for ${getBestUseCases(vehicle)}.`
-    },
-    {
-      question: `How much does ${vehicle.name} cost to rent?`,
-      answer: `${vehicle.name} rents for $${vehicle.pricePerHour} per hour with a ${vehicle.minimumHours}-hour minimum.${fuelChargeNote} The exact total is shown before checkout based on your trip length.`
-    },
-    {
-      question: "How many guests can it fit?",
-      answer: `This rental accommodates up to ${vehicle.capacity} guests. For mixed age groups or special event needs, confirm the final guest count before booking.`
-    },
-    {
-      question: "Where does it serve?",
-      answer:
-        "ATX Boats & Buses serves Austin, Lake Austin, Lake Travis, and Central Texas event groups depending on the selected rental and trip details."
-    },
-    {
-      question: "How do deposits and payment work?",
-      answer:
-        "A 20% deposit confirms your booking, and the remaining balance is automatically charged to your card on file two days before the trip. Bookings made within two days of the trip are paid in full at checkout."
-    },
-    {
-      question: "Do guests need to sign a waiver?",
-      answer:
-        "Yes. Every guest signs a digital waiver before the trip. You receive a shareable waiver link with your booking confirmation, plus reminders as your trip date approaches."
-    }
-  ];
-}
-
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const vehicle = await getVehicleBySlug(params.slug);
 
@@ -208,8 +161,6 @@ export default async function VehicleDetailPage({ params }: PageProps) {
       }
     : null;
 
-  const faqs = buildVehicleFaqs(vehicle);
-
   return (
     <>
       <JsonLd
@@ -219,8 +170,7 @@ export default async function VehicleDetailPage({ params }: PageProps) {
             { name: getCategoryName(vehicle), path: getCategoryPath(vehicle) },
             { name: vehicle.name, path: `/vehicles/${vehicle.slug}` }
           ]),
-          buildVehicleServiceJsonLd(vehicle),
-          buildFaqJsonLd(faqs)
+          buildVehicleServiceJsonLd(vehicle)
         ]}
       />
       <section className="py-12">
@@ -251,15 +201,6 @@ export default async function VehicleDetailPage({ params }: PageProps) {
                   <li key={feature}>{feature}</li>
                 ))}
               </ul>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              {faqs.map((faq) => (
-                <article key={faq.question} className="rounded-2xl border border-white/10 bg-neutral-900 p-5">
-                  <h2 className="text-lg font-semibold text-white">{faq.question}</h2>
-                  <p className="mt-2 text-sm leading-6 text-neutral-300">{faq.answer}</p>
-                </article>
-              ))}
             </div>
 
             <UnifiedBookingForm vehicle={vehicle} autoApplyCoupon={autoApplyCoupon} />

@@ -219,7 +219,7 @@ export default function ManualBookingForm({ onCreated }: ManualBookingFormProps)
               setAmountEdited(false);
             }}
             required
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
+            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-400"
           >
             <option value="">{vehicles.length === 0 && !error ? "Loading vehicles..." : "Select vehicle"}</option>
             {vehicles.map((vehicle) => (
@@ -238,7 +238,7 @@ export default function ManualBookingForm({ onCreated }: ManualBookingFormProps)
             value={guestCount}
             onChange={(event) => setGuestCount(event.target.value)}
             required
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
+            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-400"
           />
         </label>
 
@@ -252,7 +252,7 @@ export default function ManualBookingForm({ onCreated }: ManualBookingFormProps)
               setAmountEdited(false);
             }}
             required
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
+            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-400"
           />
         </label>
 
@@ -265,7 +265,7 @@ export default function ManualBookingForm({ onCreated }: ManualBookingFormProps)
               setAmountEdited(false);
             }}
             required
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
+            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-400"
           >
             <option value="">Select pickup time</option>
             {HOUR_OPTIONS.map((option) => (
@@ -286,7 +286,7 @@ export default function ManualBookingForm({ onCreated }: ManualBookingFormProps)
               setAmountEdited(false);
             }}
             required
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
+            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-400"
           />
         </label>
 
@@ -299,7 +299,7 @@ export default function ManualBookingForm({ onCreated }: ManualBookingFormProps)
               setAmountEdited(false);
             }}
             required
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
+            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-400"
           >
             <option value="">Select return time</option>
             {HOUR_OPTIONS.map((option) => (
@@ -317,7 +317,7 @@ export default function ManualBookingForm({ onCreated }: ManualBookingFormProps)
             value={customerName}
             onChange={(event) => setCustomerName(event.target.value)}
             required
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
+            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-400"
           />
         </label>
 
@@ -328,7 +328,7 @@ export default function ManualBookingForm({ onCreated }: ManualBookingFormProps)
             value={customerEmail}
             onChange={(event) => setCustomerEmail(event.target.value)}
             required
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
+            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-400"
           />
         </label>
 
@@ -338,7 +338,7 @@ export default function ManualBookingForm({ onCreated }: ManualBookingFormProps)
             type="tel"
             value={customerPhone}
             onChange={(event) => setCustomerPhone(event.target.value)}
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
+            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-400"
           />
         </label>
 
@@ -356,7 +356,7 @@ export default function ManualBookingForm({ onCreated }: ManualBookingFormProps)
               setAmountEdited(true);
             }}
             required
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
+            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-400"
           />
         </label>
       </div>
@@ -367,7 +367,7 @@ export default function ManualBookingForm({ onCreated }: ManualBookingFormProps)
           rows={2}
           value={notes}
           onChange={(event) => setNotes(event.target.value)}
-          className="w-full rounded-md border border-slate-300 px-3 py-2"
+          className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-400"
         />
       </label>
 
