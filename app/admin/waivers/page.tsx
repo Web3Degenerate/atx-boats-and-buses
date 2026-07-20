@@ -26,7 +26,7 @@ type WaiverBookingRow = {
   start_time: string;
   end_time: string;
   guest_count: number;
-  waiver_token: string;
+  waiver_token: string | null;
   signers: SignerRow[];
 };
 
@@ -68,6 +68,35 @@ export default function AdminWaiversPage() {
   const [loading, setLoading] = useState(true);
   const [expandedBookings, setExpandedBookings] = useState<string[]>([]);
   const [copiedBookingId, setCopiedBookingId] = useState<string | null>(null);
+  const [generatingBookingId, setGeneratingBookingId] = useState<string | null>(null);
+
+  async function generateWaiverLink(bookingId: string) {
+    setGeneratingBookingId(bookingId);
+    try {
+      const response = await fetch("/api/admin/waivers/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ bookingId })
+      });
+
+      if (response.status === 401) {
+        router.replace("/admin/login");
+        return;
+      }
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as { error?: string } | null;
+        window.alert(data?.error || "Failed to generate waiver link.");
+        return;
+      }
+
+      await fetchWaivers();
+    } finally {
+      setGeneratingBookingId(null);
+    }
+  }
 
   async function copyWaiverLink(bookingId: string, token: string) {
     const url = `${window.location.origin}/waiver/${token}`;
@@ -159,26 +188,40 @@ export default function AdminWaiversPage() {
                       </span>
                     </td>
                     <td className="px-3 py-3">
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          copyWaiverLink(row.id, row.waiver_token);
-                        }}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                      >
-                        {copiedBookingId === row.id ? (
-                          <>
-                            <Check className="h-3.5 w-3.5 text-emerald-600" />
-                            Copied
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="h-3.5 w-3.5" />
-                            Copy link
-                          </>
-                        )}
-                      </button>
+                      {row.waiver_token ? (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            copyWaiverLink(row.id, row.waiver_token!);
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                          {copiedBookingId === row.id ? (
+                            <>
+                              <Check className="h-3.5 w-3.5 text-emerald-600" />
+                              Copied
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3.5 w-3.5" />
+                              Copy link
+                            </>
+                          )}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            generateWaiverLink(row.id);
+                          }}
+                          disabled={generatingBookingId !== null}
+                          className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-70"
+                        >
+                          {generatingBookingId === row.id ? "Generating..." : "Generate link"}
+                        </button>
+                      )}
                     </td>
                   </tr>
                   {isExpanded && (

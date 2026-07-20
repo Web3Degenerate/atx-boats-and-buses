@@ -11,7 +11,7 @@ type WaiverAdminRow = {
   start_time: string;
   end_time: string;
   guest_count: number;
-  waiver_token: string;
+  waiver_token: string | null;
   signed_waiver_id: string | null;
   signer_type: "adult" | "guardian" | null;
   first_name: string | null;
@@ -44,7 +44,7 @@ type BookingResponse = {
   start_time: string;
   end_time: string;
   guest_count: number;
-  waiver_token: string;
+  waiver_token: string | null;
   signers: SignerResponse[];
 };
 
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         b.date::text AS trip_date,
         b.start_time::text,
         b.end_time::text,
-        wl.guest_count,
+        COALESCE(wl.guest_count, b.guest_count) AS guest_count,
         wl.token AS waiver_token,
         sw.id AS signed_waiver_id,
         sw.signer_type,
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
         wm.last_name AS minor_last_name
       FROM bookings b
       JOIN vehicles v ON v.id = b.vehicle_id
-      JOIN waiver_links wl ON wl.booking_id = b.id
+      LEFT JOIN waiver_links wl ON wl.booking_id = b.id
       LEFT JOIN signed_waivers sw ON sw.waiver_link_id = wl.id
       LEFT JOIN waiver_minors wm ON wm.signed_waiver_id = sw.id
       WHERE b.date >= CURRENT_DATE
