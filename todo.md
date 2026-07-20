@@ -1,3 +1,18 @@
+# Upscale Pass 1: Trust Layer + Corporate Inquiry + Conversion Mechanics
+
+Approved direction (from the modernization review). Constraint: no fabricated testimonials, client names, or credentials — the trust band ships only with claims verifiably true of how the site operates (personally confirmed charters, Stripe payment, digital waivers, statewide service). Real quotes/credentials get slots when the owner supplies them.
+
+## Plan
+- [x] `components/trust/TrustBand.tsx` — fact-based trust strip (personally confirmed · secure Stripe checkout · digital guest waivers · Austin-based, statewide). Full variant on homepage, compact on vehicle pages.
+- [x] `/corporate` page + `CorporateInquiryForm` + rate-limited `/api/corporate-inquiry` that emails the booking-alert recipients (reply-to the inquirer) — the concierge path that feeds the manual-booking feature.
+- [x] Navbar: add Corporate link + visible phone number (tel: link) on desktop and mobile menu.
+- [x] Vehicle pages: "From $X for Y hours" price anchor, compact trust band, sticky "Check Availability" CTA that scrolls to the booking form.
+- [x] Homepage: trust band under hero + corporate CTA strip linking /corporate.
+- [x] Footer + sitemap: add /corporate.
+- [x] `tsc` + build + browser verification of the public pages.
+
+---
+
 # Manual Admin Bookings
 
 Approved design (owner picked: email payment link · prefilled-but-editable amount · per-booking full/deposit toggle). Admin creates a booking from `/admin`; the DB row is created instantly as `confirmed` (blocks the calendar via the existing exclusion constraint), the waiver link is generated, and the customer gets one email with the waiver link + a secure Stripe Checkout payment link. Payment status is visible in the bookings tab; unpaid manual bookings get a "Resend payment link" button (Checkout links expire after 24h — resending mints a fresh one).

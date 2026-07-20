@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import UnifiedBookingForm from "@/components/booking/UnifiedBookingForm";
 import JsonLd from "@/components/seo/JsonLd";
+import TrustBand from "@/components/trust/TrustBand";
 import Container from "@/components/ui/Container";
 import ImageCarouselAnimated from "@/components/vehicles/ImageCarouselAnimated";
+import StickyBookCTA from "@/components/vehicles/StickyBookCTA";
 import { query } from "@/lib/db";
 import {
   buildBreadcrumbJsonLd,
@@ -189,7 +191,16 @@ export default async function VehicleDetailPage({ params }: PageProps) {
             <p className="text-neutral-200">
               <span className="font-semibold">Minimum rental:</span> {vehicle.minimumHours} hours
             </p>
-            <p className="text-xl font-semibold text-emerald-400">${vehicle.pricePerHour} / hour</p>
+            <div>
+              <p className="text-2xl font-semibold text-white">
+                From ${(vehicle.pricePerHour * vehicle.minimumHours).toLocaleString()}
+                <span className="text-base font-normal text-neutral-400"> for {vehicle.minimumHours} hours</span>
+              </p>
+              <p className="mt-1 text-sm text-neutral-400">
+                ${vehicle.pricePerHour.toLocaleString()} / hour
+                {vehicle.fuelChargePercent > 0 ? ` · ${vehicle.fuelChargePercent}% ${vehicle.optionalChargeLabel.toLowerCase()} applies` : ""}
+              </p>
+            </div>
             {autoApplyCoupon?.promoText && (
               <p className="text-sm font-medium text-emerald-400">{autoApplyCoupon.promoText}</p>
             )}
@@ -203,7 +214,13 @@ export default async function VehicleDetailPage({ params }: PageProps) {
               </ul>
             </div>
 
-            <UnifiedBookingForm vehicle={vehicle} autoApplyCoupon={autoApplyCoupon} />
+            <TrustBand variant="compact" />
+
+            <div id="booking-form" className="scroll-mt-24">
+              <UnifiedBookingForm vehicle={vehicle} autoApplyCoupon={autoApplyCoupon} />
+            </div>
+
+            <StickyBookCTA label={`Check Availability — from $${(vehicle.pricePerHour * vehicle.minimumHours).toLocaleString()}`} />
           </div>
         </Container>
       </section>

@@ -69,6 +69,11 @@ export default function Footer() {
           <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider">Company</h3>
           <ul className="space-y-3 text-neutral-400">
             <li>
+              <Link href="/corporate" className="transition-colors hover:text-white">
+                Corporate Events
+              </Link>
+            </li>
+            <li>
               <Link href="/#about" className="transition-colors hover:text-white">
                 About Us
               </Link>

@@ -3,15 +3,18 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Menu } from "lucide-react";
+import { Menu, Phone } from "lucide-react";
 import Container from "@/components/ui/Container";
 
 const navLinks = [
   { label: "Bus Rentals", href: "/buses" },
   { label: "Boat Rentals", href: "/boats" },
-  { label: "About Us", href: "/#about" },
+  { label: "Corporate", href: "/corporate" },
   { label: "Contact", href: "/contact" }
 ];
+
+const PHONE_DISPLAY = "(512) 710-3801";
+const PHONE_TEL = "+15127103801";
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -37,6 +40,13 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          <a
+            href={`tel:${PHONE_TEL}`}
+            className="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-white transition-colors hover:border-emerald-400 hover:text-emerald-400"
+          >
+            <Phone className="h-3.5 w-3.5" />
+            {PHONE_DISPLAY}
+          </a>
         </nav>
         <button className="text-white md:hidden" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu">
           <Menu className="h-6 w-6" />
@@ -55,6 +65,13 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
+            <a
+              href={`tel:${PHONE_TEL}`}
+              className="inline-flex items-center gap-2 py-2 text-sm font-semibold uppercase tracking-wide text-white"
+            >
+              <Phone className="h-4 w-4" />
+              {PHONE_DISPLAY}
+            </a>
           </Container>
         </div>
       )}

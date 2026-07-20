@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, Anchor, Bus } from "lucide-react";
 import * as motion from "motion/react-client";
 import JsonLd from "@/components/seo/JsonLd";
+import TrustBand from "@/components/trust/TrustBand";
 import { buildLocalBusinessJsonLd, buildWebsiteJsonLd } from "@/lib/seo";
 
 export default function HomePage() {
@@ -64,6 +65,8 @@ export default function HomePage() {
           </motion.div>
         </div>
       </section>
+
+      <TrustBand />
 
       <section id="about" className="mx-auto w-full max-w-7xl px-6 py-24 lg:px-12">
         <div className="grid gap-8 md:grid-cols-2 lg:gap-12">
@@ -148,6 +151,26 @@ export default function HomePage() {
               </div>
             </Link>
           </motion.div>
+        </div>
+      </section>
+
+      <section className="border-t border-white/10 bg-neutral-900/50">
+        <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-6 px-6 py-16 md:flex-row md:items-center lg:px-12">
+          <div className="max-w-xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">Corporate Events</p>
+            <h2 className="mt-2 text-3xl font-bold tracking-tight">Planning an offsite or client event?</h2>
+            <p className="mt-3 text-neutral-400">
+              Tell us the occasion and headcount — we build the itinerary, handle the waivers, and give you one
+              point of contact from inquiry to drop-off.
+            </p>
+          </div>
+          <Link
+            href="/corporate"
+            className="inline-flex shrink-0 items-center gap-3 rounded-full bg-white px-8 py-4 font-semibold text-black transition-colors hover:bg-neutral-200"
+          >
+            Request a Proposal
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </section>
     </>
