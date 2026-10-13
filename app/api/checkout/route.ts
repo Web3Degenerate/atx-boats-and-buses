@@ -1,3 +1,4 @@
+import { BALANCE_DUE_DAYS, TERMS_VERSION } from "@/lib/balance-policy";
 import { NextRequest, NextResponse } from "next/server";
 import { vehicles } from "@/data/vehicles";
 import { query } from "@/lib/db";
@@ -15,6 +16,7 @@ type CheckoutRequestBody = {
   customerName?: string;
   customerEmail?: string;
   customerPhone?: string;
+  agreedToTerms?: boolean;
   notes?: string;
   couponId?: string | null;
 };
@@ -73,6 +75,10 @@ export async function POST(request: NextRequest) {
 
     if (!vehicleId || !date || !startTime || !endTime || !guestCount || !customerName || !customerEmail || !customerPhone) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    if (body.agreedToTerms !== true) {
+      return NextResponse.json({ error: "Please agree to the Terms and Conditions to continue." }, { status: 400 });
     }
 
     if (
@@ -179,8 +185,8 @@ export async function POST(request: NextRequest) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const daysUntilBooking = Math.floor((bookingDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    const isWithinTwoDays = daysUntilBooking <= 2;
-    const depositCents = isWithinTwoDays ? discountedTotalCents : Math.round(discountedTotalCents * 0.2);
+    const isWithinBalanceWindow = daysUntilBooking <= BALANCE_DUE_DAYS;
+    const depositCents = isWithinBalanceWindow ? discountedTotalCents : Math.round(discountedTotalCents * 0.2);
     const remainingCents = discountedTotalCents - depositCents;
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
@@ -226,6 +232,8 @@ export async function POST(request: NextRequest) {
         notes: truncateForMetadata(notes ?? ""),
         depositAmount: String(depositCents),
         remainingAmount: String(remainingCents),
+        termsAcceptedAt: new Date().toISOString(),
+        termsVersion: TERMS_VERSION,
         ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {})
       }
     });
