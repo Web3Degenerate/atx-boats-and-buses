@@ -1,3 +1,4 @@
+import { BALANCE_DUE_DAYS, BALANCE_POLICY_CUTOFF, LEGACY_BALANCE_DUE_DAYS } from "@/lib/balance-policy";
 import { NextRequest, NextResponse } from "next/server";
 import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { query } from "@/lib/db";
@@ -69,8 +70,12 @@ export async function GET(request: NextRequest) {
         AND b.balance_paid = FALSE
         AND b.remaining_amount > 0
         AND b.balance_charge_failed = FALSE
-        AND b.date = CURRENT_DATE + INTERVAL '3 days'
-    `
+        AND (
+          (b.created_at >= $1::timestamptz AND b.date = CURRENT_DATE + ($2::int + 1))
+          OR (b.created_at < $1::timestamptz AND b.date = CURRENT_DATE + ($3::int + 1))
+        )
+    `,
+    [BALANCE_POLICY_CUTOFF, BALANCE_DUE_DAYS, LEGACY_BALANCE_DUE_DAYS]
   );
 
   for (const booking of reminderResult.rows) {
@@ -91,8 +96,13 @@ export async function GET(request: NextRequest) {
         AND b.balance_paid = FALSE
         AND b.remaining_amount > 0
         AND b.balance_charge_failed = FALSE
-        AND b.date = CURRENT_DATE + INTERVAL '2 days'
-    `
+        AND b.date >= CURRENT_DATE
+        AND (
+          (b.created_at >= $1::timestamptz AND b.date <= CURRENT_DATE + $2::int)
+          OR (b.created_at < $1::timestamptz AND b.date <= CURRENT_DATE + $3::int)
+        )
+    `,
+    [BALANCE_POLICY_CUTOFF, BALANCE_DUE_DAYS, LEGACY_BALANCE_DUE_DAYS]
   );
 
   for (const booking of chargeResult.rows) {
