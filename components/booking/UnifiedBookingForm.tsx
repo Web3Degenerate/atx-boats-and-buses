@@ -7,6 +7,8 @@ import TimeSlotGrid from "@/components/booking/TimeSlotGrid";
 import { TimeSlot, Vehicle } from "@/types";
 import Link from "next/link";
 import { BALANCE_DUE_DAYS } from "@/lib/balance-policy";
+import { CAPTAIN_FEE_DAY_OF_STATEMENT, isCaptainFee } from "@/lib/captain-fee";
+import { BOAT_SALES_TAX_RATE, SALES_TAX_LABEL, isSalesTaxable } from "@/lib/sales-tax";
 
 type UnifiedBookingFormProps = {
   vehicle: Vehicle;
@@ -92,6 +94,7 @@ export default function UnifiedBookingForm({ vehicle, autoApplyCoupon }: Unified
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [prepayCaptainFee, setPrepayCaptainFee] = useState<"" | "yes" | "no">("");
   const [notes, setNotes] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<CouponResponse | null>(null);
@@ -186,19 +189,26 @@ export default function UnifiedBookingForm({ vehicle, autoApplyCoupon }: Unified
   }, [pickupDate, pickupTime, returnDate, returnTime]);
 
   const basePrice = selectedHours * vehicle.pricePerHour;
-  const fuelCharge = basePrice * (vehicle.fuelChargePercent / 100);
+  const captainFeeOptional = isCaptainFee(vehicle.optionalChargeLabel) && vehicle.fuelChargePercent > 0;
+  const fuelCharge = captainFeeOptional && prepayCaptainFee !== "yes"
+    ? 0
+    : basePrice * (vehicle.fuelChargePercent / 100);
   const totalPrice = basePrice + fuelCharge;
   const optionalChargeLabel = vehicle.optionalChargeLabel || "Fuel Charge";
-  const discountedTotal = appliedCoupon
-    ? Math.round(totalPrice * (1 - appliedCoupon.discountPercent / 100))
-    : totalPrice;
-  const discountAmount = totalPrice - discountedTotal;
+  const discountMultiplier = appliedCoupon ? 1 - appliedCoupon.discountPercent / 100 : 1;
+  const discountedSubtotal = appliedCoupon ? Math.round(totalPrice * discountMultiplier) : totalPrice;
+  const discountAmount = totalPrice - discountedSubtotal;
+  // Sales tax on boats: charter price after discount, excluding the captain's fee.
+  const salesTax = isSalesTaxable(vehicle.type)
+    ? Math.round(basePrice * 100 * discountMultiplier * BOAT_SALES_TAX_RATE) / 100
+    : 0;
+  const discountedTotal = discountedSubtotal + salesTax;
 
   const daysUntilBooking = pickupDate
     ? Math.floor((new Date(pickupDate).getTime() - new Date(new Date().toDateString()).getTime()) / (1000 * 60 * 60 * 24))
     : null;
   const showDeposit = daysUntilBooking !== null && daysUntilBooking > BALANCE_DUE_DAYS;
-  const depositAmount = Math.round(discountedTotal * 0.2);
+  const depositAmount = Math.round(discountedTotal * 20) / 100;
   const isAutoApplied = Boolean(
     autoApplyCoupon &&
     appliedCoupon?.id === autoApplyCoupon.id
@@ -403,6 +413,11 @@ export default function UnifiedBookingForm({ vehicle, autoApplyCoupon }: Unified
       return;
     }
 
+    if (captainFeeOptional && !prepayCaptainFee) {
+      setSubmitError("Please choose whether to prepay the captain's fee.");
+      return;
+    }
+
     if (!agreedToTerms) {
       setSubmitError("Please agree to the Terms and Conditions to continue.");
       return;
@@ -438,7 +453,8 @@ export default function UnifiedBookingForm({ vehicle, autoApplyCoupon }: Unified
           customerPhone,
           notes,
           couponId: appliedCoupon?.id ?? null,
-          agreedToTerms
+          agreedToTerms,
+          ...(captainFeeOptional ? { prepayCaptainFee: prepayCaptainFee === "yes" } : {})
         })
       });
 
@@ -599,17 +615,57 @@ export default function UnifiedBookingForm({ vehicle, autoApplyCoupon }: Unified
             />
           </label>
 
+          {captainFeeOptional && (
+            <fieldset className="space-y-3 rounded-lg border border-white/10 p-4 text-sm text-neutral-300">
+              <legend className="px-1 text-base font-semibold text-white">Prepay Captain&rsquo;s Fee</legend>
+              <div className="flex gap-6">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="prepayCaptainFee"
+                    value="yes"
+                    required
+                    checked={prepayCaptainFee === "yes"}
+                    onChange={() => setPrepayCaptainFee("yes")}
+                    className="h-4 w-4 accent-emerald-500"
+                  />
+                  Yes
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="prepayCaptainFee"
+                    value="no"
+                    checked={prepayCaptainFee === "no"}
+                    onChange={() => setPrepayCaptainFee("no")}
+                    className="h-4 w-4 accent-emerald-500"
+                  />
+                  No
+                </label>
+              </div>
+              {prepayCaptainFee === "yes" && (
+                <p>The {vehicle.fuelChargePercent}% captain&rsquo;s fee is added to your total below.</p>
+              )}
+              {prepayCaptainFee === "no" && (
+                <p className="rounded-md bg-neutral-800 px-3 py-2 text-white">{CAPTAIN_FEE_DAY_OF_STATEMENT}</p>
+              )}
+            </fieldset>
+          )}
+
           <div className="rounded-lg bg-neutral-800 p-4">
             <h3 className="text-lg font-semibold text-white">Price Summary</h3>
             <div className="mt-2 space-y-1 text-sm text-neutral-300">
               <p>Hours: {selectedHours || 0}</p>
               <p>Base: {formatCurrency(basePrice)}</p>
-              {vehicle.fuelChargePercent > 0 && <p>{optionalChargeLabel}: {formatCurrency(fuelCharge)}</p>}
+              {vehicle.fuelChargePercent > 0 && !captainFeeOptional && <p>{optionalChargeLabel}: {formatCurrency(fuelCharge)}</p>}
+              {captainFeeOptional && prepayCaptainFee === "yes" && <p>{optionalChargeLabel} (prepaid): {formatCurrency(fuelCharge)}</p>}
+              {captainFeeOptional && prepayCaptainFee === "no" && <p>{optionalChargeLabel}: paid to the captain on the day</p>}
               {appliedCoupon && (
                 <p className="text-emerald-400">
                   Discount (-{appliedCoupon.discountPercent}%): -{formatCurrency(discountAmount)}
                 </p>
               )}
+              {salesTax > 0 && <p>{SALES_TAX_LABEL}: {formatCurrency(salesTax)}</p>}
               <p className="pt-1 text-base font-semibold text-white">Total: {formatCurrency(discountedTotal)}</p>
               {showDeposit && (
                 <p className="pt-1 text-base font-semibold text-emerald-400">20% Deposit Due Today: {formatCurrency(depositAmount)}</p>
