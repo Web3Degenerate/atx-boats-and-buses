@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import CalendarPicker from "@/components/booking/CalendarPicker";
 import TimeSlotGrid from "@/components/booking/TimeSlotGrid";
 import { TimeSlot, Vehicle } from "@/types";
+import Link from "next/link";
+import { BALANCE_DUE_DAYS } from "@/lib/balance-policy";
 
 type UnifiedBookingFormProps = {
   vehicle: Vehicle;
@@ -89,6 +91,7 @@ export default function UnifiedBookingForm({ vehicle, autoApplyCoupon }: Unified
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [notes, setNotes] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<CouponResponse | null>(null);
@@ -194,7 +197,7 @@ export default function UnifiedBookingForm({ vehicle, autoApplyCoupon }: Unified
   const daysUntilBooking = pickupDate
     ? Math.floor((new Date(pickupDate).getTime() - new Date(new Date().toDateString()).getTime()) / (1000 * 60 * 60 * 24))
     : null;
-  const showDeposit = daysUntilBooking !== null && daysUntilBooking > 2;
+  const showDeposit = daysUntilBooking !== null && daysUntilBooking > BALANCE_DUE_DAYS;
   const depositAmount = Math.round(discountedTotal * 0.2);
   const isAutoApplied = Boolean(
     autoApplyCoupon &&
@@ -400,6 +403,11 @@ export default function UnifiedBookingForm({ vehicle, autoApplyCoupon }: Unified
       return;
     }
 
+    if (!agreedToTerms) {
+      setSubmitError("Please agree to the Terms and Conditions to continue.");
+      return;
+    }
+
     if (selectedHours < vehicle.minimumHours) {
       setSubmitError(`Minimum booking is ${vehicle.minimumHours} hours.`);
       return;
@@ -429,7 +437,8 @@ export default function UnifiedBookingForm({ vehicle, autoApplyCoupon }: Unified
           customerEmail,
           customerPhone,
           notes,
-          couponId: appliedCoupon?.id ?? null
+          couponId: appliedCoupon?.id ?? null,
+          agreedToTerms
         })
       });
 
@@ -657,18 +666,36 @@ export default function UnifiedBookingForm({ vehicle, autoApplyCoupon }: Unified
             <div className="rounded-lg bg-neutral-800 p-4 space-y-3 text-sm text-neutral-300">
               <h3 className="text-base font-semibold text-white">Booking Policies</h3>
               {showDeposit ? (
-                <p>There is a nonrefundable 20% deposit at the time of booking. The remaining balance is due 2 days before the date of your reservation.</p>
+                <p>A 20% deposit is due today. The remaining balance is charged automatically to your card on file {BALANCE_DUE_DAYS} days before your reservation.</p>
               ) : (
-                <p>Since this reservation is within 2 days of your booking, the entire balance of your rental is due today. Please note that this payment is nonrefundable since your reservation is within 2 days of your rental.</p>
+                <p>Because this reservation is within {BALANCE_DUE_DAYS} days, the full amount is due today.</p>
               )}
-              <p>Customers will receive a full refund in case of operator cancellation due to weather or other unforeseen circumstances.</p>
+              <p>Cancellations made 30 or more days before your reservation receive a full refund, 14 to 29 days receive a 50% refund, and 48 hours to 13 days receive a booking credit. Cancellations within 48 hours are not refunded.</p>
+              <p>If we cancel for weather or unsafe conditions, you receive a booking credit valid for 6 months.</p>
               <p>Every member of your party must complete our electronic waiver form before the start of your reservation. You will be provided with said electronic waiver after you complete the booking.</p>
             </div>
           )}
 
+          <label className="flex items-start gap-3 text-sm text-neutral-300">
+            <input
+              type="checkbox"
+              required
+              checked={agreedToTerms}
+              onChange={(event) => setAgreedToTerms(event.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-500"
+            />
+            <span>
+              I have read and agree to the{" "}
+              <Link href="/terms" target="_blank" className="text-emerald-400 underline">
+                Terms and Conditions
+              </Link>{" "}
+              on behalf of myself and every guest in my group.
+            </span>
+          </label>
+
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !agreedToTerms}
             className="w-full rounded-md bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {isSubmitting ? "Processing..." : "Proceed to Payment"}
