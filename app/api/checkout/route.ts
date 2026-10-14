@@ -1,4 +1,6 @@
 import { BALANCE_DUE_DAYS, TERMS_VERSION } from "@/lib/balance-policy";
+import { CAPTAIN_FEE_DAY_OF_STATEMENT, isCaptainFee } from "@/lib/captain-fee";
+import { BOAT_SALES_TAX_RATE, isSalesTaxable } from "@/lib/sales-tax";
 import { NextRequest, NextResponse } from "next/server";
 import { vehicles } from "@/data/vehicles";
 import { query } from "@/lib/db";
@@ -17,6 +19,7 @@ type CheckoutRequestBody = {
   customerEmail?: string;
   customerPhone?: string;
   agreedToTerms?: boolean;
+  prepayCaptainFee?: boolean;
   notes?: string;
   couponId?: string | null;
 };
@@ -146,7 +149,22 @@ export async function POST(request: NextRequest) {
     );
 
     const fuelChargeEnabled = settingResult.rows[0]?.value !== "false";
-    const appliedFuelChargePercent = fuelChargeEnabled ? vehicle.fuelChargePercent : 0;
+    const captainFeeOptional = isCaptainFee(vehicle.optionalChargeLabel) && vehicle.fuelChargePercent > 0;
+
+    if (captainFeeOptional && typeof body.prepayCaptainFee !== "boolean") {
+      return NextResponse.json({ error: "Please choose whether to prepay the captain's fee." }, { status: 400 });
+    }
+
+    const prepayCaptainFee = captainFeeOptional && body.prepayCaptainFee === true;
+    const appliedFuelChargePercent = !fuelChargeEnabled || (captainFeeOptional && !prepayCaptainFee)
+      ? 0
+      : vehicle.fuelChargePercent;
+    const captainFeeNote = !captainFeeOptional
+      ? ""
+      : prepayCaptainFee
+        ? "[Captain's fee: PREPAID at checkout]"
+        : `[Captain's fee: NOT prepaid. Customer agreed: "${CAPTAIN_FEE_DAY_OF_STATEMENT}"]`;
+    const bookingNotes = [captainFeeNote, notes?.trim() ?? ""].filter(Boolean).join(" ");
 
     const basePriceDollars = durationHours * vehicle.pricePerHour;
     const fuelChargeDollars = basePriceDollars * (appliedFuelChargePercent / 100);
@@ -178,9 +196,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const discountedTotalCents = appliedCoupon
-      ? Math.round(totalPriceCents * (1 - appliedCoupon.discount_percent / 100))
+    const discountMultiplier = appliedCoupon ? 1 - appliedCoupon.discount_percent / 100 : 1;
+    const discountedSubtotalCents = appliedCoupon
+      ? Math.round(totalPriceCents * discountMultiplier)
       : totalPriceCents;
+    // Sales tax on boats: charter price after discount, excluding the captain's fee.
+    const salesTaxCents = isSalesTaxable(vehicle.type)
+      ? Math.round(basePriceDollars * 100 * discountMultiplier * BOAT_SALES_TAX_RATE)
+      : 0;
+    const discountedTotalCents = discountedSubtotalCents + salesTaxCents;
     const bookingDate = new Date(date + "T00:00:00");
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -229,11 +253,13 @@ export async function POST(request: NextRequest) {
         customerName: truncateForMetadata(customerName),
         customerEmail: truncateForMetadata(customerEmail),
         customerPhone: truncateForMetadata(customerPhone),
-        notes: truncateForMetadata(notes ?? ""),
+        notes: truncateForMetadata(bookingNotes),
         depositAmount: String(depositCents),
         remainingAmount: String(remainingCents),
         termsAcceptedAt: new Date().toISOString(),
         termsVersion: TERMS_VERSION,
+        ...(salesTaxCents > 0 ? { salesTax: String(salesTaxCents) } : {}),
+        ...(captainFeeOptional ? { captainFee: prepayCaptainFee ? "prepaid" : "pay_captain_day_of" } : {}),
         ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {})
       }
     });
