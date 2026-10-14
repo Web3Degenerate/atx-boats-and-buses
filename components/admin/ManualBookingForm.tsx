@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { BALANCE_DUE_DAYS } from "@/lib/balance-policy";
+import { isCaptainFee } from "@/lib/captain-fee";
+import { BOAT_SALES_TAX_RATE, isSalesTaxable } from "@/lib/sales-tax";
 
 type PricingVehicle = {
   id: string;
@@ -11,6 +13,8 @@ type PricingVehicle = {
   minimum_hours: number;
   maximum_hours: number;
   fuel_charge_percent: number;
+  type?: string;
+  optional_charge_label?: string | null;
 };
 
 type ManualBookingFormProps = {
@@ -18,7 +22,7 @@ type ManualBookingFormProps = {
 };
 
 type CreatedResult = {
-  paymentUrl: string;
+  paymentUrl: string | null;
   waiverUrl: string;
 };
 
@@ -73,7 +77,8 @@ export default function ManualBookingForm({ onCreated }: ManualBookingFormProps)
   const [notes, setNotes] = useState("");
   const [amountDollars, setAmountDollars] = useState("");
   const [amountEdited, setAmountEdited] = useState(false);
-  const [depositMode, setDepositMode] = useState<"full" | "deposit">("full");
+  const [depositMode, setDepositMode] = useState<"full" | "deposit" | "invoice">("full");
+  const [prepayCaptainFee, setPrepayCaptainFee] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [created, setCreated] = useState<CreatedResult | null>(null);
@@ -108,9 +113,16 @@ export default function ManualBookingForm({ onCreated }: ManualBookingFormProps)
     }
 
     const baseCents = hours * selectedVehicle.price_per_hour;
-    const fuelCents = baseCents * (selectedVehicle.fuel_charge_percent / 100);
-    return Math.round(baseCents + fuelCents);
-  }, [selectedVehicle, hours]);
+    const captainFeeOptional = isCaptainFee(selectedVehicle.optional_charge_label) && selectedVehicle.fuel_charge_percent > 0;
+    const feeCents = captainFeeOptional && !prepayCaptainFee ? 0 : baseCents * (selectedVehicle.fuel_charge_percent / 100);
+    const taxCents = isSalesTaxable(selectedVehicle.type) ? baseCents * BOAT_SALES_TAX_RATE : 0;
+    return Math.round(baseCents + feeCents + taxCents);
+  }, [selectedVehicle, hours, prepayCaptainFee]);
+
+  const selectedHasCaptainFee = Boolean(
+    selectedVehicle && isCaptainFee(selectedVehicle.optional_charge_label) && selectedVehicle.fuel_charge_percent > 0
+  );
+  const selectedIsTaxable = Boolean(selectedVehicle && isSalesTaxable(selectedVehicle.type));
 
   useEffect(() => {
     if (!amountEdited && computedTotalCents > 0) {
@@ -125,7 +137,9 @@ export default function ManualBookingForm({ onCreated }: ManualBookingFormProps)
   }, [date, endDate]);
 
   const totalAmountCents = Math.round(Number(amountDollars || 0) * 100);
-  const collectNowCents = depositMode === "full" ? totalAmountCents : Math.round(totalAmountCents * 0.2);
+  const collectNowCents = depositMode === "invoice"
+    ? 0
+    : depositMode === "full" ? totalAmountCents : Math.round(totalAmountCents * 0.2);
 
   // Deposit mode depends on the balance cron charging BALANCE_DUE_DAYS before the trip.
   const daysOut = daysUntil(date);
@@ -164,14 +178,14 @@ export default function ManualBookingForm({ onCreated }: ManualBookingFormProps)
         })
       });
 
-      const data = (await response.json()) as { error?: string; paymentUrl?: string; waiverUrl?: string };
+      const data = (await response.json()) as { error?: string; paymentUrl?: string | null; waiverUrl?: string };
 
-      if (!response.ok || !data.paymentUrl || !data.waiverUrl) {
+      if (!response.ok || !data.waiverUrl || (depositMode !== "invoice" && !data.paymentUrl)) {
         setError(data.error || "Failed to create booking.");
         return;
       }
 
-      setCreated({ paymentUrl: data.paymentUrl, waiverUrl: data.waiverUrl });
+      setCreated({ paymentUrl: data.paymentUrl ?? null, waiverUrl: data.waiverUrl });
       onCreated();
     } catch {
       setError("Failed to create booking.");
@@ -184,12 +198,16 @@ export default function ManualBookingForm({ onCreated }: ManualBookingFormProps)
     return (
       <div className="space-y-3 rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm text-slate-900">
         <p className="font-semibold text-emerald-900">
-          Booking created. The customer has been emailed the payment link and waiver link.
+          {created.paymentUrl
+            ? "Booking created. The customer has been emailed the payment link and waiver link."
+            : "Booking created with nothing charged online. The customer has been emailed the waiver link and told you will send the invoice separately."}
         </p>
-        <div>
-          <p className="font-semibold">Payment link (valid 24 hours):</p>
-          <p className="break-all text-slate-700">{created.paymentUrl}</p>
-        </div>
+        {created.paymentUrl && (
+          <div>
+            <p className="font-semibold">Payment link (valid 24 hours):</p>
+            <p className="break-all text-slate-700">{created.paymentUrl}</p>
+          </div>
+        )}
         <div>
           <p className="font-semibold">Waiver link:</p>
           <p className="break-all text-slate-700">{created.waiverUrl}</p>
@@ -349,7 +367,7 @@ export default function ManualBookingForm({ onCreated }: ManualBookingFormProps)
           </span>
           <input
             type="number"
-            min="0.01"
+            min={depositMode === "invoice" ? "0" : "0.01"}
             step="0.01"
             value={amountDollars}
             onChange={(event) => {
@@ -394,14 +412,47 @@ export default function ManualBookingForm({ onCreated }: ManualBookingFormProps)
             />
             <span>20% deposit now, balance auto-charged {BALANCE_DUE_DAYS} days before trip</span>
           </label>
+          <label className="flex items-center gap-2 text-slate-700">
+            <input
+              type="radio"
+              name="depositMode"
+              checked={depositMode === "invoice"}
+              onChange={() => setDepositMode("invoice")}
+            />
+            <span>Invoice separately (nothing charged online)</span>
+          </label>
         </div>
+        {depositMode === "invoice" && (
+          <p className="text-slate-600">
+            The booking is confirmed with a $0 balance on the site and no card charges. The customer gets the waiver
+            link and a note that you will send the invoice. The amount above is saved for your records.
+          </p>
+        )}
         {!depositAllowed && date && (
           <p className="text-xs text-amber-700">
             This trip is within {BALANCE_DUE_DAYS} days, so the full amount must be collected. The deposit option needs time for
             the automatic balance charge to run.
           </p>
         )}
-        {totalAmountCents > 0 && (
+        {(selectedHasCaptainFee || selectedIsTaxable) && (
+          <div className="space-y-1 text-slate-600">
+            {selectedHasCaptainFee && (
+              <label className="flex items-center gap-2 text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={prepayCaptainFee}
+                  onChange={(event) => {
+                    setPrepayCaptainFee(event.target.checked);
+                    setAmountEdited(false);
+                  }}
+                />
+                <span>Include prepaid 20% captain&rsquo;s fee in the total</span>
+              </label>
+            )}
+            {selectedIsTaxable && <p>Auto price includes 8.25% sales tax on the charter price.</p>}
+          </div>
+        )}
+        {totalAmountCents > 0 && depositMode !== "invoice" && (
           <p className="text-slate-600">
             Payment link will collect{" "}
             <span className="font-semibold">
@@ -419,7 +470,7 @@ export default function ManualBookingForm({ onCreated }: ManualBookingFormProps)
         disabled={submitting}
         className="rounded-md bg-slate-900 px-5 py-2 font-semibold text-white hover:bg-slate-700 disabled:opacity-70"
       >
-        {submitting ? "Creating..." : "Create Booking & Send Links"}
+        {submitting ? "Creating..." : depositMode === "invoice" ? "Create Booking & Send Waiver Link" : "Create Booking & Send Links"}
       </button>
     </form>
   );
