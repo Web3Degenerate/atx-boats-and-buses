@@ -18,8 +18,8 @@ export async function POST(request: NextRequest) {
     !body.guestCount ||
     !body.customerName ||
     !body.customerEmail ||
-    !body.totalAmountCents ||
-    (body.depositMode !== "full" && body.depositMode !== "deposit")
+    (body.totalAmountCents === undefined || body.totalAmountCents === null) ||
+    (body.depositMode !== "full" && body.depositMode !== "deposit" && body.depositMode !== "invoice")
   ) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
