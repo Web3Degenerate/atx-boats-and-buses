@@ -18,11 +18,12 @@ export type ManualBookingInput = {
   customerPhone?: string;
   notes?: string;
   totalAmountCents: number;
-  depositMode: "full" | "deposit";
+  // "invoice": booking is confirmed with nothing collected online; you invoice the customer yourself.
+  depositMode: "full" | "deposit" | "invoice";
 };
 
 export type ManualBookingResult =
-  | { ok: true; bookingId: string; paymentUrl: string; waiverUrl: string }
+  | { ok: true; bookingId: string; paymentUrl: string | null; waiverUrl: string }
   | { ok: false; error: string };
 
 type InsertedBookingRow = {
@@ -120,7 +121,9 @@ export async function createManualBooking(input: ManualBookingInput): Promise<Ma
     return { ok: false, error: "Customer name and email are required." };
   }
 
-  if (!Number.isInteger(input.totalAmountCents) || input.totalAmountCents <= 0) {
+  const isInvoice = input.depositMode === "invoice";
+
+  if (!Number.isInteger(input.totalAmountCents) || input.totalAmountCents < 0 || (!isInvoice && input.totalAmountCents === 0)) {
     return { ok: false, error: "Amount must be greater than zero." };
   }
 
@@ -171,11 +174,16 @@ export async function createManualBooking(input: ManualBookingInput): Promise<Ma
     return { ok: false, error: "That time overlaps a blocked date range for this vehicle." };
   }
 
-  const depositCents = input.depositMode === "full"
-    ? input.totalAmountCents
-    : Math.round(input.totalAmountCents * 0.2);
-  const remainingCents = input.totalAmountCents - depositCents;
-  const notes = input.notes?.trim() ? `[Manual] ${input.notes.trim()}` : "[Manual]";
+  // Invoice bookings record the total for reference but collect nothing online, so
+  // deposit and balance are zero and the automatic balance charge never runs.
+  const depositCents = isInvoice
+    ? 0
+    : input.depositMode === "full"
+      ? input.totalAmountCents
+      : Math.round(input.totalAmountCents * 0.2);
+  const remainingCents = isInvoice ? 0 : input.totalAmountCents - depositCents;
+  const manualTag = isInvoice ? "[Manual] [Invoiced separately]" : "[Manual]";
+  const notes = input.notes?.trim() ? `${manualTag} ${input.notes.trim()}` : manualTag;
 
   let bookingId: string;
 
@@ -240,6 +248,29 @@ export async function createManualBooking(input: ManualBookingInput): Promise<Ma
   }
 
   const waiverUrl = await createWaiverLink(bookingId, vehicle.type, input.guestCount, input.date);
+
+  if (isInvoice) {
+    try {
+      const emailResult = await getResend().emails.send({
+        from: "ATX Boats and Buses <bookings@atxboatsandbuses.com>",
+        to: input.customerEmail.trim(),
+        subject: "Your Booking — ATX Boats and Buses",
+        text: `Hi ${input.customerName.trim()}, your booking for ${vehicle.name} on ${input.date} from ${input.startTime} to ${input.endTime} is confirmed.\n\nWe will send your invoice separately.\n\nEvery guest must sign the waiver before the trip: ${waiverUrl}\n\nYour booking is subject to our Terms and Conditions: ${baseUrl}/terms\n\nThank you, ATX Boats and Buses`
+      });
+
+      if (emailResult.error) {
+        throw new Error(emailResult.error.message);
+      }
+    } catch (error) {
+      console.error("Manual invoice booking customer email failed:", error);
+      return {
+        ok: false,
+        error: `Booking and waiver were created, but the customer email failed. Send the waiver link yourself: ${waiverUrl}`
+      };
+    }
+
+    return { ok: true, bookingId, paymentUrl: null, waiverUrl };
+  }
 
   let paymentSession: { id: string; url: string } | null = null;
 
