@@ -3,6 +3,7 @@ import { getEmailTemplate, renderTemplate } from "@/lib/email-templates";
 import { getResend } from "@/lib/resend";
 import { stripe } from "@/lib/stripe";
 import { createWaiverLink } from "@/lib/waiver";
+import { BALANCE_DUE_DAYS } from "@/lib/balance-policy";
 
 export type ActionBookingRow = {
   id: string;
@@ -89,7 +90,7 @@ async function sendBookingConfirmationEmail(booking: ActionBookingRow, waiverLin
   }
 
   const bodyText = booking.remaining_amount > 0
-    ? `Hi ${booking.customer_name}, great news! Your booking for ${booking.vehicle_name} on ${booking.date} from ${booking.start_time} to ${booking.end_time} has been approved. Your 20% deposit of ${formatCurrency(booking.deposit_amount)} has been charged. Your remaining balance of ${formatCurrency(booking.remaining_amount)} will be automatically charged to your card on file 2 days before your booking. We look forward to seeing you! Thank you, ATX Boats and Buses`
+    ? `Hi ${booking.customer_name}, great news! Your booking for ${booking.vehicle_name} on ${booking.date} from ${booking.start_time} to ${booking.end_time} has been approved. Your 20% deposit of ${formatCurrency(booking.deposit_amount)} has been charged. Your remaining balance of ${formatCurrency(booking.remaining_amount)} will be automatically charged to your card on file ${BALANCE_DUE_DAYS} days before your booking. We look forward to seeing you! Thank you, ATX Boats and Buses`
     : `Hi ${booking.customer_name}, great news! Your booking for ${booking.vehicle_name} on ${booking.date} from ${booking.start_time} to ${booking.end_time} has been approved and your payment of ${formatCurrency(booking.deposit_amount)} has been processed. We look forward to seeing you! Thank you, ATX Boats and Buses`;
 
   await getResend().emails.send({
@@ -215,7 +216,7 @@ export async function rejectBooking(
         ? booking.deposit_amount + booking.remaining_amount
         : booking.deposit_amount;
       const customerEmailText = !refund
-        ? `Hi ${booking.customer_name}, your booking for ${booking.vehicle_name} on ${booking.date} has been cancelled. Per our cancellation policy, the deposit is non-refundable. If you have questions, please contact us. Thank you, ATX Boats and Buses`
+        ? `Hi ${booking.customer_name}, your booking for ${booking.vehicle_name} on ${booking.date} has been cancelled. Per our Terms and Conditions, this cancellation is not eligible for a refund. If you have questions, please contact us. Thank you, ATX Boats and Buses`
         : `Hi ${booking.customer_name}, your booking for ${booking.vehicle_name} on ${booking.date} has been cancelled and your payment of ${formatCurrency(refundedAmount)} has been refunded.${reasonLine} If you have any questions, please don't hesitate to contact us. Thank you, ATX Boats and Buses`;
 
       if (template) {

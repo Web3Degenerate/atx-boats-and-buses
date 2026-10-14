@@ -4,6 +4,7 @@ import { getResend } from "@/lib/resend";
 import { stripe } from "@/lib/stripe";
 import { getVehicleBySlug } from "@/lib/vehicles";
 import { createWaiverLink } from "@/lib/waiver";
+import { BALANCE_DUE_DAYS } from "@/lib/balance-policy";
 
 export type ManualBookingInput = {
   vehicleSlug: string;
@@ -130,17 +131,17 @@ export async function createManualBooking(input: ManualBookingInput): Promise<Ma
     return { ok: false, error: "Return time must be after pickup time." };
   }
 
-  // The 20% deposit option relies on the balance cron charging 2 days before the
+  // The 20% deposit option relies on the balance cron charging BALANCE_DUE_DAYS before the
   // trip — inside that window the full amount must be collected up front.
   const bookingDate = new Date(`${input.date}T00:00:00`);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const daysUntilBooking = Math.floor((bookingDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-  if (input.depositMode === "deposit" && daysUntilBooking <= 2) {
+  if (input.depositMode === "deposit" && daysUntilBooking <= BALANCE_DUE_DAYS) {
     return {
       ok: false,
-      error: "The 20% deposit option requires the trip to be more than 2 days out — collect the full amount instead."
+      error: `The 20% deposit option requires the trip to be more than ${BALANCE_DUE_DAYS} days out. Collect the full amount instead.`
     };
   }
 
@@ -274,7 +275,7 @@ export async function createManualBooking(input: ManualBookingInput): Promise<Ma
 
   try {
     const balanceNote = remainingCents > 0
-      ? ` Your remaining balance of ${formatCurrency(remainingCents)} will be automatically charged to your card on file 2 days before your trip.`
+      ? ` Your remaining balance of ${formatCurrency(remainingCents)} will be automatically charged to your card on file ${BALANCE_DUE_DAYS} days before your trip.`
       : "";
 
     const emailResult = await getResend().emails.send({
