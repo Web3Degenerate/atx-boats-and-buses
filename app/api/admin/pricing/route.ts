@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
   }
 
   const result = await query<PricingRow>(
-    "SELECT id, name, slug, price_per_hour, minimum_hours, maximum_hours, fuel_charge_percent, optional_charge_label FROM vehicles ORDER BY name"
+    "SELECT id, name, slug, type, price_per_hour, minimum_hours, maximum_hours, fuel_charge_percent, optional_charge_label FROM vehicles ORDER BY name"
   );
 
   return NextResponse.json(result.rows);
