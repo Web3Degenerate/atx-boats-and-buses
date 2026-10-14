@@ -265,11 +265,16 @@ export default function TermsPage() {
             ]}
           />
           <p>Passenger counts may not exceed the maximum for the vessel booked. These limits are firm safety limits.</p>
+          <p>
+            Texas sales tax of 8.25% is added to the yacht charter price, after any discount. It is not charged on the
+            captain fee.
+          </p>
         </Clause>
 
         <Clause title="3.2 Captain fee">
           <p>
-            A captain fee equal to 20% of the base charter cost is paid directly to the captain on the day of the charter.
+            A captain fee equal to 20% of the base charter cost applies to every yacht charter. At checkout you may
+            prepay it with your booking, or agree to pay it directly to the captain on the day of the charter.
           </p>
         </Clause>
 
