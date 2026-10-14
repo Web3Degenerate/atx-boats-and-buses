@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { BALANCE_DUE_DAYS } from "@/lib/balance-policy";
 
 type PricingVehicle = {
   id: string;
@@ -126,9 +127,9 @@ export default function ManualBookingForm({ onCreated }: ManualBookingFormProps)
   const totalAmountCents = Math.round(Number(amountDollars || 0) * 100);
   const collectNowCents = depositMode === "full" ? totalAmountCents : Math.round(totalAmountCents * 0.2);
 
-  // Deposit mode depends on the balance cron charging 2 days before the trip.
+  // Deposit mode depends on the balance cron charging BALANCE_DUE_DAYS before the trip.
   const daysOut = daysUntil(date);
-  const depositAllowed = daysOut === null || daysOut > 2;
+  const depositAllowed = daysOut === null || daysOut > BALANCE_DUE_DAYS;
 
   useEffect(() => {
     if (!depositAllowed && depositMode === "deposit") {
@@ -391,12 +392,12 @@ export default function ManualBookingForm({ onCreated }: ManualBookingFormProps)
               onChange={() => setDepositMode("deposit")}
               disabled={!depositAllowed}
             />
-            <span>20% deposit now, balance auto-charged 2 days before trip</span>
+            <span>20% deposit now, balance auto-charged {BALANCE_DUE_DAYS} days before trip</span>
           </label>
         </div>
         {!depositAllowed && date && (
           <p className="text-xs text-amber-700">
-            This trip is within 2 days, so the full amount must be collected — the deposit option needs time for
+            This trip is within {BALANCE_DUE_DAYS} days, so the full amount must be collected. The deposit option needs time for
             the automatic balance charge to run.
           </p>
         )}
