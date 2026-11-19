@@ -1,3 +1,24 @@
+# Upcoming Balance Charges + Stop Auto-Charge
+
+Admin can see which balances the cron will auto-charge, and switch off the auto-charge for a booking (e.g. customer has a new card and will pay by invoice), then mark the balance paid once the invoice is settled.
+
+## Plan
+- [x] Migration: `ALTER TABLE bookings ADD COLUMN balance_autocharge_disabled BOOLEAN NOT NULL DEFAULT FALSE` (add to `scripts/`).
+- [x] Cron `charge-balances`: skip rows with `balance_autocharge_disabled = TRUE` in both the reminder and charge queries.
+- [x] `GET /api/admin/bookings`: return `remaining_amount`, `balance_paid`, `balance_charge_failed`, `balance_autocharge_disabled`.
+- [x] `POST /api/admin/bookings/balance` (admin-only): actions `stop_autocharge`, `resume_autocharge`, `mark_paid`.
+- [x] Bookings tab: "Upcoming balance charges" section — trip date, charge date (trip − 2 days), customer, vehicle, amount, status (Scheduled / Auto-charge off / Failed), with Stop / Resume / Mark paid buttons.
+- [x] `tsc --noEmit` + lint.
+
+## Review
+- `scripts/add-balance-autocharge-disabled.sql` adds `balance_autocharge_disabled`. **Run it on the DB before deploying** — the bookings API and cron reference the column.
+- Cron skips disabled bookings for both the 3-day reminder and the 2-day charge.
+- `POST /api/admin/bookings/balance` (admin-only): stop / resume (resume also clears a prior failed flag) / mark paid; only touches confirmed, unpaid bookings.
+- Bookings tab shows "Upcoming Balance Charges" with charge date, balance, status and actions.
+- `tsc --noEmit` passes. `next lint` isn't configured in this repo (it prompts for setup), so lint was not run. Not browser-verified yet (needs the migration first).
+
+---
+
 # Upscale Pass 1: Trust Layer + Corporate Inquiry + Conversion Mechanics
 
 Approved direction (from the modernization review). Constraint: no fabricated testimonials, client names, or credentials — the trust band ships only with claims verifiably true of how the site operates (personally confirmed charters, Stripe payment, digital waivers, statewide service). Real quotes/credentials get slots when the owner supplies them.

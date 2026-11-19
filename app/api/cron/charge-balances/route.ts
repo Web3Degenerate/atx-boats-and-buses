@@ -70,6 +70,7 @@ export async function GET(request: NextRequest) {
         AND b.balance_paid = FALSE
         AND b.remaining_amount > 0
         AND b.balance_charge_failed = FALSE
+        AND b.balance_autocharge_disabled = FALSE
         AND (
           (b.created_at >= $1::timestamptz AND b.date = CURRENT_DATE + ($2::int + 1))
           OR (b.created_at < $1::timestamptz AND b.date = CURRENT_DATE + ($3::int + 1))
@@ -96,6 +97,7 @@ export async function GET(request: NextRequest) {
         AND b.balance_paid = FALSE
         AND b.remaining_amount > 0
         AND b.balance_charge_failed = FALSE
+        AND b.balance_autocharge_disabled = FALSE
         AND b.date >= CURRENT_DATE
         AND (
           (b.created_at >= $1::timestamptz AND b.date <= CURRENT_DATE + $2::int)
